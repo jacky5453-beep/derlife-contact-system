@@ -1,0 +1,938 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>得來素 - 廠商及客戶資料系統</title>
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+    <!-- SheetJS -->
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        brand: '#C3F000',
+                        'brand-orange': '#FFAA00',
+                        'brand-dark': '#1A1A16',
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { font-family: 'Noto Sans TC', 'Microsoft JhengHei', sans-serif; }
+        .page { display: none; }
+        .page.active { display: block; }
+        /* 自訂核取方塊 */
+        .custom-checkbox { accent-color: #C3F000; width: 18px; height: 18px; cursor: pointer; }
+        /* 表格 hover */
+        .data-table tbody tr:hover { background-color: #f0fcd4; }
+        /* 搜尋框 */
+        input[type="search"]::-webkit-search-cancel-button { cursor: pointer; }
+        /* Toast 通知 */
+        .toast {
+            position: fixed; top: 20px; right: 20px; z-index: 9999;
+            padding: 12px 24px; border-radius: 8px; color: #fff;
+            font-weight: 500; transform: translateX(120%);
+            transition: transform 0.3s ease;
+        }
+        .toast.show { transform: translateX(0); }
+        .toast.success { background: #22c55e; }
+        .toast.error { background: #ef4444; }
+    </style>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
+</head>
+<body class="bg-gray-50 min-h-screen">
+
+<!-- Toast 通知容器 -->
+<div id="toast" class="toast"></div>
+
+<!-- ===== 頁首 ===== -->
+<header class="bg-brand-dark text-white shadow-lg">
+    <div class="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
+        <div class="flex items-center gap-3 cursor-pointer" onclick="navigateTo('home')">
+            <img src="logo.png" alt="得來素" class="h-10 w-10 rounded-full object-cover">
+            <div>
+                <h1 class="text-lg font-bold" style="color: #C3F000;">廠商及客戶資料系統</h1>
+                <p class="text-xs text-gray-400">得來素企業有限公司</p>
+            </div>
+        </div>
+        <div class="flex items-center gap-3">
+            <button id="btn-admin" onclick="goToAdmin()" class="text-sm px-4 py-2 rounded-lg bg-brand-dark border border-gray-600 hover:border-brand transition">
+                後台管理
+            </button>
+            <div id="user-info" class="hidden flex items-center gap-2">
+                <img id="user-avatar" class="h-8 w-8 rounded-full" src="" alt="">
+                <span id="user-name" class="text-sm text-gray-300"></span>
+                <button onclick="logout()" class="text-xs text-gray-400 hover:text-red-400 ml-1">登出</button>
+            </div>
+        </div>
+    </div>
+</header>
+
+<!-- ===== 前台：首頁 ===== -->
+<div id="page-home" class="page active">
+    <div class="max-w-2xl mx-auto px-4 py-16 text-center">
+        <h2 class="text-3xl font-bold text-brand-dark mb-3">歡迎填寫資料</h2>
+        <p class="text-gray-500 mb-10">請選擇您的身份，填寫相關資料</p>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
+            <!-- 廠商 -->
+            <div onclick="startForm('supplier')"
+                 class="cursor-pointer bg-white rounded-2xl shadow-md hover:shadow-xl transition p-8 border-2 border-transparent hover:border-brand group">
+                <div class="w-16 h-16 mx-auto mb-4 bg-brand/20 rounded-full flex items-center justify-center group-hover:bg-brand/40 transition">
+                    <svg class="w-8 h-8 text-brand-dark" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path>
+                    </svg>
+                </div>
+                <h3 class="text-xl font-bold text-brand-dark mb-2">我是廠商</h3>
+                <p class="text-gray-400 text-sm">填寫廠商基本資料</p>
+            </div>
+            <!-- 客戶 -->
+            <div onclick="startForm('customer')"
+                 class="cursor-pointer bg-white rounded-2xl shadow-md hover:shadow-xl transition p-8 border-2 border-transparent hover:border-brand-orange group">
+                <div class="w-16 h-16 mx-auto mb-4 bg-orange-100 rounded-full flex items-center justify-center group-hover:bg-orange-200 transition">
+                    <svg class="w-8 h-8 text-brand-dark" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                    </svg>
+                </div>
+                <h3 class="text-xl font-bold text-brand-dark mb-2">我是客戶</h3>
+                <p class="text-gray-400 text-sm">填寫客戶基本資料</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ===== 前台：填表頁 ===== -->
+<div id="page-form" class="page">
+    <div class="max-w-3xl mx-auto px-4 py-8">
+        <button onclick="navigateTo('home')" class="text-sm text-gray-500 hover:text-brand-dark mb-4 inline-flex items-center gap-1">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
+            返回首頁
+        </button>
+        <div class="bg-white rounded-2xl shadow-md p-6 sm:p-8">
+            <h2 id="form-title" class="text-2xl font-bold text-brand-dark mb-6"></h2>
+            <form id="data-form" onsubmit="submitForm(event)">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <!-- 名稱 -->
+                    <div class="sm:col-span-2">
+                        <label id="lbl-name" class="block text-sm font-medium text-gray-700 mb-1"></label>
+                        <input name="name" type="text" required class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-brand focus:border-brand outline-none">
+                    </div>
+                    <!-- 簡稱 -->
+                    <div>
+                        <label id="lbl-short" class="block text-sm font-medium text-gray-700 mb-1"></label>
+                        <input name="shortName" type="text" class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-brand focus:border-brand outline-none">
+                    </div>
+                    <!-- 統一編號 -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">統一編號</label>
+                        <input name="taxId" type="text" maxlength="8" pattern="[0-9]{8}" title="請輸入8碼統一編號" class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-brand focus:border-brand outline-none">
+                    </div>
+                    <!-- 郵遞區號 -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">郵遞區號</label>
+                        <input name="zipCode" type="text" maxlength="6" class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-brand focus:border-brand outline-none">
+                    </div>
+                    <!-- 主聯絡人 -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">主聯絡人</label>
+                        <input name="contact" type="text" required class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-brand focus:border-brand outline-none">
+                    </div>
+                    <!-- 發票地址 -->
+                    <div class="sm:col-span-2">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">發票地址</label>
+                        <input name="invoiceAddr" type="text" class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-brand focus:border-brand outline-none">
+                    </div>
+                    <!-- 公司地址 -->
+                    <div class="sm:col-span-2">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">公司地址</label>
+                        <input name="companyAddr" type="text" class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-brand focus:border-brand outline-none">
+                    </div>
+                    <!-- 送貨地址 -->
+                    <div class="sm:col-span-2">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">送貨地址</label>
+                        <input name="deliveryAddr" type="text" class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-brand focus:border-brand outline-none">
+                    </div>
+                    <!-- 電話號碼 -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">電話號碼</label>
+                        <input name="phone" type="tel" class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-brand focus:border-brand outline-none">
+                    </div>
+                    <!-- 行動電話 -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">行動電話</label>
+                        <input name="mobile" type="tel" class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-brand focus:border-brand outline-none">
+                    </div>
+                    <!-- 傳真號碼 -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">傳真號碼</label>
+                        <input name="fax" type="tel" class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-brand focus:border-brand outline-none">
+                    </div>
+                    <!-- E-Mail -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">E-Mail</label>
+                        <input name="email" type="email" class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-brand focus:border-brand outline-none">
+                    </div>
+                    <!-- 備註 -->
+                    <div class="sm:col-span-2">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">備註</label>
+                        <textarea name="note" rows="3" class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-brand focus:border-brand outline-none"></textarea>
+                    </div>
+                </div>
+                <div class="mt-6 flex justify-end">
+                    <button type="submit" id="btn-submit" class="px-8 py-3 rounded-lg font-bold text-brand-dark transition text-lg" style="background: #C3F000;">
+                        送出資料
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- ===== 前台：送出成功 ===== -->
+<div id="page-success" class="page">
+    <div class="max-w-lg mx-auto px-4 py-20 text-center">
+        <div class="w-20 h-20 mx-auto mb-6 bg-green-100 rounded-full flex items-center justify-center">
+            <svg class="w-10 h-10 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+            </svg>
+        </div>
+        <h2 class="text-2xl font-bold text-brand-dark mb-3">資料送出成功！</h2>
+        <p class="text-gray-500 mb-8">感謝您填寫資料，我們將盡快處理。</p>
+        <button onclick="navigateTo('home')" class="px-6 py-3 rounded-lg font-bold text-brand-dark" style="background: #C3F000;">
+            返回首頁
+        </button>
+    </div>
+</div>
+
+<!-- ===== 後台：登入頁 ===== -->
+<div id="page-login" class="page">
+    <div class="max-w-sm mx-auto px-4 py-20 text-center">
+        <div class="bg-white rounded-2xl shadow-md p-8">
+            <h2 class="text-2xl font-bold text-brand-dark mb-2">後台管理</h2>
+            <p class="text-gray-500 mb-6 text-sm">請使用 Google 帳號登入</p>
+            <button onclick="loginWithGoogle()" class="w-full flex items-center justify-center gap-3 border border-gray-300 rounded-lg px-4 py-3 hover:bg-gray-50 transition">
+                <svg class="w-5 h-5" viewBox="0 0 24 24"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 01-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
+                <span class="font-medium text-gray-700">使用 Google 帳號登入</span>
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- ===== 後台：管理頁面 ===== -->
+<div id="page-admin" class="page">
+    <div class="max-w-6xl mx-auto px-4 py-6">
+        <!-- 分頁標籤 -->
+        <div class="flex gap-2 mb-4 flex-wrap">
+            <button onclick="switchAdminTab('supplier')" id="tab-supplier"
+                class="px-5 py-2 rounded-lg font-medium text-sm transition admin-tab active-tab"
+                style="background: #C3F000; color: #1A1A16;">
+                廠商資料
+            </button>
+            <button onclick="switchAdminTab('customer')" id="tab-customer"
+                class="px-5 py-2 rounded-lg font-medium text-sm transition admin-tab bg-gray-200 text-gray-600 hover:bg-gray-300">
+                客戶資料
+            </button>
+            <button onclick="switchAdminTab('whitelist')" id="tab-whitelist"
+                class="px-5 py-2 rounded-lg font-medium text-sm transition admin-tab bg-gray-200 text-gray-600 hover:bg-gray-300">
+                帳號權限管理
+            </button>
+        </div>
+
+        <!-- 廠商/客戶 資料區 -->
+        <div id="admin-data" class="bg-white rounded-2xl shadow-md p-4 sm:p-6">
+            <!-- 搜尋列 + 操作按鈕 -->
+            <div class="flex flex-col sm:flex-row gap-3 mb-4 items-start sm:items-center justify-between">
+                <div class="flex items-center gap-2 flex-1 w-full sm:w-auto">
+                    <input type="search" id="search-input" placeholder="搜尋名稱、統編、聯絡人..."
+                        class="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-brand focus:border-brand outline-none"
+                        oninput="filterTable()">
+                    <span id="data-count" class="text-sm text-gray-400 whitespace-nowrap"></span>
+                </div>
+                <div class="flex gap-2">
+                    <button onclick="exportSelected()" id="btn-export"
+                        class="px-4 py-2 rounded-lg text-sm font-medium text-brand-dark transition disabled:opacity-40"
+                        style="background: #C3F000;" disabled>
+                        匯出勾選項目
+                    </button>
+                    <button onclick="exportAll()"
+                        class="px-4 py-2 rounded-lg text-sm font-medium border border-gray-300 text-gray-600 hover:bg-gray-50 transition">
+                        匯出全部
+                    </button>
+                </div>
+            </div>
+
+            <!-- 資料表格 -->
+            <div class="overflow-x-auto">
+                <table class="data-table w-full text-sm">
+                    <thead>
+                        <tr class="bg-brand-dark text-white text-left">
+                            <th class="p-3 rounded-tl-lg">
+                                <input type="checkbox" class="custom-checkbox" onchange="toggleSelectAll(this)">
+                            </th>
+                            <th class="p-3" id="th-id">編號</th>
+                            <th class="p-3" id="th-name">名稱</th>
+                            <th class="p-3">簡稱</th>
+                            <th class="p-3">統一編號</th>
+                            <th class="p-3">主聯絡人</th>
+                            <th class="p-3">電話號碼</th>
+                            <th class="p-3">行動電話</th>
+                            <th class="p-3">E-Mail</th>
+                            <th class="p-3">填寫時間</th>
+                            <th class="p-3 rounded-tr-lg">操作</th>
+                        </tr>
+                    </thead>
+                    <tbody id="data-tbody"></tbody>
+                </table>
+            </div>
+            <div id="empty-state" class="hidden text-center py-12 text-gray-400">
+                <svg class="w-12 h-12 mx-auto mb-3 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                </svg>
+                <p>目前沒有資料</p>
+            </div>
+        </div>
+
+        <!-- 帳號權限管理 -->
+        <div id="admin-whitelist" class="bg-white rounded-2xl shadow-md p-4 sm:p-6 hidden">
+            <h3 class="text-lg font-bold text-brand-dark mb-4">後台帳號白名單</h3>
+            <p class="text-sm text-gray-500 mb-4">只有白名單中的 Google 帳號可以登入後台管理。</p>
+            <div class="flex gap-2 mb-4">
+                <input type="email" id="new-email" placeholder="輸入 Google 帳號 Email"
+                    class="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-brand focus:border-brand outline-none">
+                <button onclick="addWhitelist()" class="px-4 py-2 rounded-lg text-sm font-medium text-brand-dark" style="background: #C3F000;">
+                    新增
+                </button>
+            </div>
+            <div id="whitelist-list" class="space-y-2"></div>
+        </div>
+    </div>
+</div>
+
+<!-- ===== 編輯彈窗 ===== -->
+<div id="modal-edit" class="fixed inset-0 z-50 hidden">
+    <div class="absolute inset-0 bg-black/40" onclick="closeEditModal()"></div>
+    <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto p-6">
+        <div class="flex items-center justify-between mb-4">
+            <h3 id="edit-title" class="text-xl font-bold text-brand-dark"></h3>
+            <button onclick="closeEditModal()" class="text-gray-400 hover:text-gray-600">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+            </button>
+        </div>
+        <form id="edit-form" onsubmit="saveEdit(event)">
+            <input type="hidden" id="edit-doc-id">
+            <input type="hidden" id="edit-type">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div class="sm:col-span-2">
+                    <label id="edit-lbl-id" class="block text-sm font-medium text-gray-700 mb-1"></label>
+                    <input id="edit-id" type="text" class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-brand focus:border-brand outline-none" placeholder="由管理者手動填入">
+                </div>
+                <div class="sm:col-span-2">
+                    <label id="edit-lbl-name" class="block text-sm font-medium text-gray-700 mb-1"></label>
+                    <input id="edit-name" type="text" required class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-brand focus:border-brand outline-none">
+                </div>
+                <div>
+                    <label id="edit-lbl-short" class="block text-sm font-medium text-gray-700 mb-1"></label>
+                    <input id="edit-shortName" type="text" class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-brand focus:border-brand outline-none">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">統一編號</label>
+                    <input id="edit-taxId" type="text" maxlength="8" class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-brand focus:border-brand outline-none">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">郵遞區號</label>
+                    <input id="edit-zipCode" type="text" class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-brand focus:border-brand outline-none">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">主聯絡人</label>
+                    <input id="edit-contact" type="text" class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-brand focus:border-brand outline-none">
+                </div>
+                <div class="sm:col-span-2">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">發票地址</label>
+                    <input id="edit-invoiceAddr" type="text" class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-brand focus:border-brand outline-none">
+                </div>
+                <div class="sm:col-span-2">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">公司地址</label>
+                    <input id="edit-companyAddr" type="text" class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-brand focus:border-brand outline-none">
+                </div>
+                <div class="sm:col-span-2">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">送貨地址</label>
+                    <input id="edit-deliveryAddr" type="text" class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-brand focus:border-brand outline-none">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">電話號碼</label>
+                    <input id="edit-phone" type="tel" class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-brand focus:border-brand outline-none">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">行動電話</label>
+                    <input id="edit-mobile" type="tel" class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-brand focus:border-brand outline-none">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">傳真號碼</label>
+                    <input id="edit-fax" type="tel" class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-brand focus:border-brand outline-none">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">E-Mail</label>
+                    <input id="edit-email" type="email" class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-brand focus:border-brand outline-none">
+                </div>
+                <div class="sm:col-span-2">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">備註</label>
+                    <textarea id="edit-note" rows="3" class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-brand focus:border-brand outline-none"></textarea>
+                </div>
+            </div>
+            <div class="mt-6 flex justify-end gap-3">
+                <button type="button" onclick="deleteRecord()" class="px-4 py-2 rounded-lg text-sm font-medium text-red-600 border border-red-300 hover:bg-red-50 transition">
+                    刪除
+                </button>
+                <button type="button" onclick="closeEditModal()" class="px-4 py-2 rounded-lg text-sm font-medium border border-gray-300 text-gray-600 hover:bg-gray-50 transition">
+                    取消
+                </button>
+                <button type="submit" class="px-6 py-2 rounded-lg text-sm font-bold text-brand-dark transition" style="background: #C3F000;">
+                    儲存
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+// ===== Firebase 初始化 =====
+const firebaseConfig = {
+    apiKey: "AIzaSyCMnHuSPNX8kJC53eYgWHXUV4BQjXhM7uo",
+    authDomain: "derlife-audit.firebaseapp.com",
+    projectId: "derlife-audit",
+    storageBucket: "derlife-audit.firebasestorage.app",
+    messagingSenderId: "992417419976",
+    appId: "1:992417419976:web:8b44d06620ca2e8cd5cbfd"
+};
+
+// 嘗試初始化 Firebase（如果已存在則使用現有實例）
+let app;
+try {
+    app = firebase.app();
+} catch (e) {
+    app = firebase.initializeApp(firebaseConfig);
+}
+const auth = firebase.auth();
+const db = firebase.firestore();
+const provider = new firebase.auth.GoogleAuthProvider();
+
+// ===== 全域狀態 =====
+let currentUser = null;
+let currentFormType = ''; // 'supplier' or 'customer'
+let currentAdminTab = 'supplier';
+let allData = []; // 當前分頁的資料
+let selectedIds = new Set();
+
+// Firestore collection 名稱
+const COLLECTIONS = {
+    supplier: 'contact-suppliers',
+    customer: 'contact-customers',
+    whitelist: 'contact-whitelist'
+};
+
+// ===== 頁面導覽 =====
+function navigateTo(page) {
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    document.getElementById('page-' + page).classList.add('active');
+}
+
+// ===== Toast 通知 =====
+function showToast(msg, type = 'success') {
+    const toast = document.getElementById('toast');
+    toast.textContent = msg;
+    toast.className = 'toast ' + type;
+    setTimeout(() => toast.classList.add('show'), 10);
+    setTimeout(() => toast.classList.remove('show'), 3000);
+}
+
+// ===== 前台：開始填表 =====
+function startForm(type) {
+    currentFormType = type;
+    const isSupplier = type === 'supplier';
+    document.getElementById('form-title').textContent = isSupplier ? '廠商資料填寫' : '客戶資料填寫';
+    document.getElementById('lbl-name').textContent = isSupplier ? '廠商名稱 *' : '客戶名稱 *';
+    document.getElementById('lbl-short').textContent = isSupplier ? '廠商簡稱' : '客戶簡稱';
+    document.getElementById('data-form').reset();
+    navigateTo('form');
+}
+
+// ===== 前台：送出表單 =====
+async function submitForm(e) {
+    e.preventDefault();
+    const form = e.target;
+    const btn = document.getElementById('btn-submit');
+    btn.disabled = true;
+    btn.textContent = '送出中...';
+
+    try {
+        const data = {
+            type: currentFormType,
+            customId: '', // 編號由後台手動填
+            name: form.name.value.trim(),
+            shortName: form.shortName.value.trim(),
+            taxId: form.taxId.value.trim(),
+            zipCode: form.zipCode.value.trim(),
+            invoiceAddr: form.invoiceAddr.value.trim(),
+            companyAddr: form.companyAddr.value.trim(),
+            deliveryAddr: form.deliveryAddr.value.trim(),
+            phone: form.phone.value.trim(),
+            mobile: form.mobile.value.trim(),
+            fax: form.fax.value.trim(),
+            contact: form.contact.value.trim(),
+            email: form.email.value.trim(),
+            note: form.note.value.trim(),
+            createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        };
+
+        await db.collection(COLLECTIONS[currentFormType]).add(data);
+        navigateTo('success');
+    } catch (err) {
+        console.error(err);
+        showToast('送出失敗，請稍後再試', 'error');
+    } finally {
+        btn.disabled = false;
+        btn.textContent = '送出資料';
+    }
+}
+
+// ===== Google 登入 =====
+function goToAdmin() {
+    if (currentUser) {
+        navigateTo('admin');
+        loadAdminData();
+    } else {
+        navigateTo('login');
+    }
+}
+
+async function loginWithGoogle() {
+    try {
+        const result = await auth.signInWithPopup(provider);
+        const email = result.user.email;
+
+        // 首次使用：如果白名單完全為空，自動將第一個登入者設為管理員
+        const whitelistSnapshot = await db.collection(COLLECTIONS.whitelist).limit(1).get();
+        if (whitelistSnapshot.empty) {
+            await db.collection(COLLECTIONS.whitelist).doc(email).set({
+                addedAt: firebase.firestore.FieldValue.serverTimestamp(),
+                addedBy: 'system-init',
+                role: 'admin'
+            });
+            showToast('系統初始化完成，已設定您為管理員');
+        }
+
+        // 檢查白名單
+        const whitelistDoc = await db.collection(COLLECTIONS.whitelist).doc(email).get();
+        if (!whitelistDoc.exists) {
+            await auth.signOut();
+            showToast('此帳號未被授權使用後台', 'error');
+            return;
+        }
+
+        currentUser = result.user;
+        updateUserUI();
+        navigateTo('admin');
+        loadAdminData();
+        showToast('登入成功');
+    } catch (err) {
+        console.error(err);
+        showToast('登入失敗', 'error');
+    }
+}
+
+function logout() {
+    auth.signOut();
+    currentUser = null;
+    updateUserUI();
+    navigateTo('home');
+    showToast('已登出');
+}
+
+function updateUserUI() {
+    const info = document.getElementById('user-info');
+    if (currentUser) {
+        info.classList.remove('hidden');
+        info.classList.add('flex');
+        document.getElementById('user-avatar').src = currentUser.photoURL || '';
+        document.getElementById('user-name').textContent = currentUser.displayName || currentUser.email;
+    } else {
+        info.classList.add('hidden');
+        info.classList.remove('flex');
+    }
+}
+
+// 監聽登入狀態
+auth.onAuthStateChanged(async (user) => {
+    if (user) {
+        const whitelistDoc = await db.collection(COLLECTIONS.whitelist).doc(user.email).get();
+        if (whitelistDoc.exists) {
+            currentUser = user;
+            updateUserUI();
+        } else {
+            await auth.signOut();
+            currentUser = null;
+            updateUserUI();
+        }
+    } else {
+        currentUser = null;
+        updateUserUI();
+    }
+});
+
+// ===== 後台：分頁切換 =====
+function switchAdminTab(tab) {
+    currentAdminTab = tab;
+    document.querySelectorAll('.admin-tab').forEach(t => {
+        t.style.background = '#e5e7eb';
+        t.style.color = '#4b5563';
+    });
+    const activeBtn = document.getElementById('tab-' + tab);
+    activeBtn.style.background = '#C3F000';
+    activeBtn.style.color = '#1A1A16';
+
+    if (tab === 'whitelist') {
+        document.getElementById('admin-data').classList.add('hidden');
+        document.getElementById('admin-whitelist').classList.remove('hidden');
+        loadWhitelist();
+    } else {
+        document.getElementById('admin-data').classList.remove('hidden');
+        document.getElementById('admin-whitelist').classList.add('hidden');
+        loadAdminData();
+    }
+}
+
+// ===== 後台：載入資料 =====
+async function loadAdminData() {
+    const type = currentAdminTab;
+    if (type === 'whitelist') return;
+
+    const isSupplier = type === 'supplier';
+    document.getElementById('th-id').textContent = isSupplier ? '廠商編號' : '客戶編號';
+    document.getElementById('th-name').textContent = isSupplier ? '廠商名稱' : '客戶名稱';
+
+    try {
+        const snapshot = await db.collection(COLLECTIONS[type]).orderBy('createdAt', 'desc').get();
+        allData = [];
+        snapshot.forEach(doc => {
+            allData.push({ id: doc.id, ...doc.data() });
+        });
+        selectedIds.clear();
+        updateExportButton();
+        renderTable(allData);
+    } catch (err) {
+        console.error(err);
+        showToast('載入資料失敗', 'error');
+    }
+}
+
+// ===== 後台：渲染表格 =====
+function renderTable(data) {
+    const tbody = document.getElementById('data-tbody');
+    const empty = document.getElementById('empty-state');
+    const countEl = document.getElementById('data-count');
+
+    if (data.length === 0) {
+        tbody.innerHTML = '';
+        empty.classList.remove('hidden');
+        countEl.textContent = '共 0 筆';
+        return;
+    }
+    empty.classList.add('hidden');
+    countEl.textContent = `共 ${data.length} 筆`;
+
+    tbody.innerHTML = data.map(item => {
+        const time = item.createdAt ? new Date(item.createdAt.seconds * 1000).toLocaleString('zh-TW') : '-';
+        const checked = selectedIds.has(item.id) ? 'checked' : '';
+        return `<tr class="border-b border-gray-100">
+            <td class="p-3"><input type="checkbox" class="custom-checkbox" ${checked} onchange="toggleSelect('${item.id}', this.checked)"></td>
+            <td class="p-3 font-mono text-xs">${item.customId || '<span class=&quot;text-gray-300&quot;>未填</span>'}</td>
+            <td class="p-3 font-medium">${escHtml(item.name || '')}</td>
+            <td class="p-3">${escHtml(item.shortName || '')}</td>
+            <td class="p-3 font-mono">${escHtml(item.taxId || '')}</td>
+            <td class="p-3">${escHtml(item.contact || '')}</td>
+            <td class="p-3">${escHtml(item.phone || '')}</td>
+            <td class="p-3">${escHtml(item.mobile || '')}</td>
+            <td class="p-3">${escHtml(item.email || '')}</td>
+            <td class="p-3 text-xs text-gray-400">${time}</td>
+            <td class="p-3">
+                <button onclick="openEditModal('${item.id}')" class="text-blue-500 hover:text-blue-700 text-sm font-medium">編輯</button>
+            </td>
+        </tr>`;
+    }).join('');
+}
+
+function escHtml(str) {
+    const div = document.createElement('div');
+    div.textContent = str;
+    return div.innerHTML;
+}
+
+// ===== 後台：搜尋 =====
+function filterTable() {
+    const q = document.getElementById('search-input').value.trim().toLowerCase();
+    if (!q) { renderTable(allData); return; }
+    const filtered = allData.filter(item =>
+        (item.name || '').toLowerCase().includes(q) ||
+        (item.shortName || '').toLowerCase().includes(q) ||
+        (item.taxId || '').includes(q) ||
+        (item.contact || '').toLowerCase().includes(q) ||
+        (item.customId || '').toLowerCase().includes(q) ||
+        (item.email || '').toLowerCase().includes(q)
+    );
+    renderTable(filtered);
+}
+
+// ===== 後台：勾選 =====
+function toggleSelect(id, checked) {
+    if (checked) selectedIds.add(id);
+    else selectedIds.delete(id);
+    updateExportButton();
+}
+
+function toggleSelectAll(checkbox) {
+    const checkboxes = document.querySelectorAll('#data-tbody .custom-checkbox');
+    checkboxes.forEach(cb => {
+        cb.checked = checkbox.checked;
+        const row = cb.closest('tr');
+        const id = row.querySelector('button[onclick]').getAttribute('onclick').match(/'([^']+)'/)[1];
+        if (checkbox.checked) selectedIds.add(id);
+        else selectedIds.delete(id);
+    });
+    updateExportButton();
+}
+
+function updateExportButton() {
+    const btn = document.getElementById('btn-export');
+    btn.disabled = selectedIds.size === 0;
+    btn.textContent = selectedIds.size > 0 ? `匯出勾選項目 (${selectedIds.size})` : '匯出勾選項目';
+}
+
+// ===== 後台：編輯彈窗 =====
+function openEditModal(docId) {
+    const item = allData.find(d => d.id === docId);
+    if (!item) return;
+
+    const type = currentAdminTab;
+    const isSupplier = type === 'supplier';
+
+    document.getElementById('edit-title').textContent = isSupplier ? '編輯廠商資料' : '編輯客戶資料';
+    document.getElementById('edit-lbl-id').textContent = isSupplier ? '廠商編號' : '客戶編號';
+    document.getElementById('edit-lbl-name').textContent = isSupplier ? '廠商名稱 *' : '客戶名稱 *';
+    document.getElementById('edit-lbl-short').textContent = isSupplier ? '廠商簡稱' : '客戶簡稱';
+
+    document.getElementById('edit-doc-id').value = docId;
+    document.getElementById('edit-type').value = type;
+    document.getElementById('edit-id').value = item.customId || '';
+    document.getElementById('edit-name').value = item.name || '';
+    document.getElementById('edit-shortName').value = item.shortName || '';
+    document.getElementById('edit-taxId').value = item.taxId || '';
+    document.getElementById('edit-zipCode').value = item.zipCode || '';
+    document.getElementById('edit-contact').value = item.contact || '';
+    document.getElementById('edit-invoiceAddr').value = item.invoiceAddr || '';
+    document.getElementById('edit-companyAddr').value = item.companyAddr || '';
+    document.getElementById('edit-deliveryAddr').value = item.deliveryAddr || '';
+    document.getElementById('edit-phone').value = item.phone || '';
+    document.getElementById('edit-mobile').value = item.mobile || '';
+    document.getElementById('edit-fax').value = item.fax || '';
+    document.getElementById('edit-email').value = item.email || '';
+    document.getElementById('edit-note').value = item.note || '';
+
+    document.getElementById('modal-edit').classList.remove('hidden');
+}
+
+function closeEditModal() {
+    document.getElementById('modal-edit').classList.add('hidden');
+}
+
+async function saveEdit(e) {
+    e.preventDefault();
+    const docId = document.getElementById('edit-doc-id').value;
+    const type = document.getElementById('edit-type').value;
+
+    const data = {
+        customId: document.getElementById('edit-id').value.trim(),
+        name: document.getElementById('edit-name').value.trim(),
+        shortName: document.getElementById('edit-shortName').value.trim(),
+        taxId: document.getElementById('edit-taxId').value.trim(),
+        zipCode: document.getElementById('edit-zipCode').value.trim(),
+        contact: document.getElementById('edit-contact').value.trim(),
+        invoiceAddr: document.getElementById('edit-invoiceAddr').value.trim(),
+        companyAddr: document.getElementById('edit-companyAddr').value.trim(),
+        deliveryAddr: document.getElementById('edit-deliveryAddr').value.trim(),
+        phone: document.getElementById('edit-phone').value.trim(),
+        mobile: document.getElementById('edit-mobile').value.trim(),
+        fax: document.getElementById('edit-fax').value.trim(),
+        email: document.getElementById('edit-email').value.trim(),
+        note: document.getElementById('edit-note').value.trim(),
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+    };
+
+    try {
+        await db.collection(COLLECTIONS[type]).doc(docId).update(data);
+        closeEditModal();
+        showToast('儲存成功');
+        loadAdminData();
+    } catch (err) {
+        console.error(err);
+        showToast('儲存失敗', 'error');
+    }
+}
+
+async function deleteRecord() {
+    if (!confirm('確定要刪除這筆資料嗎？此操作無法復原。')) return;
+    const docId = document.getElementById('edit-doc-id').value;
+    const type = document.getElementById('edit-type').value;
+
+    try {
+        await db.collection(COLLECTIONS[type]).doc(docId).delete();
+        closeEditModal();
+        showToast('已刪除');
+        loadAdminData();
+    } catch (err) {
+        console.error(err);
+        showToast('刪除失敗', 'error');
+    }
+}
+
+// ===== 後台：匯出 Excel =====
+function buildExportData(items) {
+    const type = currentAdminTab;
+    const isSupplier = type === 'supplier';
+
+    // 完全對應 ERP 匯入檔欄位順序
+    const headers = isSupplier
+        ? ['廠商編號', '廠商名稱', '廠商簡稱', '統一編號', '郵遞區號', '發票地址', '公司地址', '送貨地址', '電話號碼', '行動電話', '傳真號碼', '主聯絡人', 'E_Mail', '備註']
+        : ['客戶編號', '客戶名稱', '客戶簡稱', '統一編號', '郵遞區號', '發票地址', '公司地址', '送貨地址', '電話號碼', '行動電話', '傳真號碼', '主聯絡人', 'E_Mail', '備註'];
+
+    const rows = items.map(item => [
+        item.customId || '',
+        item.name || '',
+        item.shortName || '',
+        item.taxId || '',
+        item.zipCode || '',
+        item.invoiceAddr || '',
+        item.companyAddr || '',
+        item.deliveryAddr || '',
+        item.phone || '',
+        item.mobile || '',
+        item.fax || '',
+        item.contact || '',
+        item.email || '',
+        item.note || ''
+    ]);
+
+    return [headers, ...rows];
+}
+
+function doExport(items) {
+    const type = currentAdminTab;
+    const isSupplier = type === 'supplier';
+    const data = buildExportData(items);
+    const ws = XLSX.utils.aoa_to_sheet(data);
+
+    // 設定欄寬
+    ws['!cols'] = [
+        { wch: 12 }, { wch: 25 }, { wch: 12 }, { wch: 12 },
+        { wch: 8 }, { wch: 30 }, { wch: 30 }, { wch: 30 },
+        { wch: 15 }, { wch: 15 }, { wch: 15 }, { wch: 10 },
+        { wch: 25 }, { wch: 20 }
+    ];
+
+    const wb = XLSX.utils.book_new();
+    const sheetName = isSupplier ? '廠商資料' : '客戶資料';
+    XLSX.utils.book_append_sheet(wb, ws, sheetName);
+
+    const fileName = isSupplier ? '廠商資料匯入檔.xlsx' : '客戶資料匯入檔.xlsx';
+    XLSX.writeFile(wb, fileName);
+    showToast(`已匯出 ${items.length} 筆資料`);
+}
+
+function exportSelected() {
+    const items = allData.filter(d => selectedIds.has(d.id));
+    if (items.length === 0) { showToast('請先勾選要匯出的項目', 'error'); return; }
+    doExport(items);
+}
+
+function exportAll() {
+    if (allData.length === 0) { showToast('沒有資料可匯出', 'error'); return; }
+    doExport(allData);
+}
+
+// ===== 後台：白名單管理 =====
+async function loadWhitelist() {
+    try {
+        const snapshot = await db.collection(COLLECTIONS.whitelist).get();
+        const list = document.getElementById('whitelist-list');
+        if (snapshot.empty) {
+            list.innerHTML = '<p class="text-gray-400 text-sm">尚無白名單帳號</p>';
+            return;
+        }
+        list.innerHTML = '';
+        snapshot.forEach(doc => {
+            const email = doc.id;
+            const data = doc.data();
+            const div = document.createElement('div');
+            div.className = 'flex items-center justify-between bg-gray-50 rounded-lg px-4 py-3';
+            div.innerHTML = `
+                <div>
+                    <span class="font-medium text-brand-dark">${escHtml(email)}</span>
+                    ${data.role === 'admin' ? '<span class="ml-2 text-xs bg-brand/30 text-brand-dark px-2 py-0.5 rounded">管理員</span>' : ''}
+                </div>
+                <button onclick="removeWhitelist('${email}')" class="text-red-400 hover:text-red-600 text-sm">移除</button>
+            `;
+            list.appendChild(div);
+        });
+    } catch (err) {
+        console.error(err);
+        showToast('載入白名單失敗', 'error');
+    }
+}
+
+async function addWhitelist() {
+    const input = document.getElementById('new-email');
+    const email = input.value.trim().toLowerCase();
+    if (!email || !email.includes('@')) {
+        showToast('請輸入有效的 Email', 'error');
+        return;
+    }
+    try {
+        await db.collection(COLLECTIONS.whitelist).doc(email).set({
+            addedAt: firebase.firestore.FieldValue.serverTimestamp(),
+            addedBy: currentUser.email,
+            role: 'user'
+        });
+        input.value = '';
+        showToast('已新增白名單');
+        loadWhitelist();
+    } catch (err) {
+        console.error(err);
+        showToast('新增失敗', 'error');
+    }
+}
+
+async function removeWhitelist(email) {
+    if (email === currentUser.email) {
+        showToast('不能移除自己的帳號', 'error');
+        return;
+    }
+    if (!confirm(`確定要移除 ${email} 的存取權限嗎？`)) return;
+    try {
+        await db.collection(COLLECTIONS.whitelist).doc(email).delete();
+        showToast('已移除');
+        loadWhitelist();
+    } catch (err) {
+        console.error(err);
+        showToast('移除失敗', 'error');
+    }
+}
+</script>
+
+</body>
+</html>
