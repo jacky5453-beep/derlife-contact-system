@@ -131,8 +131,15 @@
                     </div>
                     <!-- 統一編號 -->
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">統一編號 *</label>
-                        <input name="taxId" type="text" maxlength="8" pattern="[0-9]{8}" title="請輸入8碼統一編號" required class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-brand focus:border-brand outline-none">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">統一編號</label>
+                        <div class="flex gap-2">
+                            <select name="taxIdType" id="taxIdType" class="border border-gray-300 rounded-lg px-2 py-2 focus:ring-2 focus:ring-brand focus:border-brand outline-none">
+                                <option value="has">有統編</option>
+                                <option value="none">無統編</option>
+                                <option value="notNeeded">無需統編</option>
+                            </select>
+                            <input name="taxId" id="taxIdInput" type="text" maxlength="8" pattern="[0-9]{8}" title="請輸入8碼統一編號" placeholder="8碼數字" class="flex-1 w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-brand focus:border-brand outline-none">
+                        </div>
                     </div>
                     <!-- 郵遞區號 -->
                     <div>
@@ -343,7 +350,14 @@
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">統一編號</label>
-                    <input id="edit-taxId" type="text" maxlength="8" class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-brand focus:border-brand outline-none">
+                    <div class="flex gap-2">
+                        <select id="edit-taxIdType" class="border border-gray-300 rounded-lg px-2 py-2 focus:ring-2 focus:ring-brand focus:border-brand outline-none">
+                            <option value="has">有統編</option>
+                            <option value="none">無統編</option>
+                            <option value="notNeeded">無需統編</option>
+                        </select>
+                        <input id="edit-taxId" type="text" maxlength="8" placeholder="8碼數字" class="flex-1 w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-brand focus:border-brand outline-none">
+                    </div>
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">郵遞區號</label>
@@ -460,8 +474,44 @@ function startForm(type) {
     document.getElementById('lbl-name').textContent = isSupplier ? '廠商名稱 *' : '客戶名稱 *';
     document.getElementById('lbl-short').textContent = isSupplier ? '廠商簡稱' : '客戶簡稱';
     document.getElementById('data-form').reset();
+    // 重置統編輸入框狀態
+    const taxInput = document.getElementById('taxIdInput');
+    taxInput.disabled = false;
     navigateTo('form');
 }
+
+// ===== 統編類型切換（前台新增表單）=====
+document.addEventListener('DOMContentLoaded', function() {
+    const taxIdType = document.getElementById('taxIdType');
+    const taxIdInput = document.getElementById('taxIdInput');
+    if (taxIdType && taxIdInput) {
+        taxIdType.addEventListener('change', function() {
+            if (this.value === 'has') {
+                taxIdInput.disabled = false;
+                taxIdInput.placeholder = '8碼數字';
+            } else {
+                taxIdInput.disabled = true;
+                taxIdInput.value = '';
+                taxIdInput.placeholder = this.value === 'none' ? '無統編' : '無需統編';
+            }
+        });
+    }
+    // 編輯 modal 的統編切換
+    const editTaxIdType = document.getElementById('edit-taxIdType');
+    const editTaxIdInput = document.getElementById('edit-taxId');
+    if (editTaxIdType && editTaxIdInput) {
+        editTaxIdType.addEventListener('change', function() {
+            if (this.value === 'has') {
+                editTaxIdInput.disabled = false;
+                editTaxIdInput.placeholder = '8碼數字';
+            } else {
+                editTaxIdInput.disabled = true;
+                editTaxIdInput.value = '';
+                editTaxIdInput.placeholder = this.value === 'none' ? '無統編' : '無需統編';
+            }
+        });
+    }
+});
 
 // ===== 前台：送出表單 =====
 async function submitForm(e) {
@@ -477,7 +527,9 @@ async function submitForm(e) {
             customId: '', // 編號由後台手動填
             name: form.name.value.trim(),
             shortName: form.shortName.value.trim(),
-            taxId: form.taxId.value.trim(),
+            taxId: form.taxIdType.value === 'none' ? '無統編'
+                 : form.taxIdType.value === 'notNeeded' ? '無需統編'
+                 : form.taxId.value.trim(),
             zipCode: form.zipCode.value.trim(),
             invoiceAddr: form.invoiceAddr.value.trim(),
             companyAddr: form.companyAddr.value.trim(),
@@ -732,7 +784,22 @@ function openEditModal(docId) {
     document.getElementById('edit-id').value = item.customId || '';
     document.getElementById('edit-name').value = item.name || '';
     document.getElementById('edit-shortName').value = item.shortName || '';
-    document.getElementById('edit-taxId').value = item.taxId || '';
+    // 統一編號：判斷是否為「無統編／無需統編」
+    const editTaxIdType = document.getElementById('edit-taxIdType');
+    const editTaxIdInput = document.getElementById('edit-taxId');
+    if (item.taxId === '無統編') {
+        editTaxIdType.value = 'none';
+        editTaxIdInput.value = '';
+        editTaxIdInput.disabled = true;
+    } else if (item.taxId === '無需統編') {
+        editTaxIdType.value = 'notNeeded';
+        editTaxIdInput.value = '';
+        editTaxIdInput.disabled = true;
+    } else {
+        editTaxIdType.value = 'has';
+        editTaxIdInput.value = item.taxId || '';
+        editTaxIdInput.disabled = false;
+    }
     document.getElementById('edit-zipCode').value = item.zipCode || '';
     document.getElementById('edit-contact').value = item.contact || '';
     document.getElementById('edit-invoiceAddr').value = item.invoiceAddr || '';
@@ -760,7 +827,12 @@ async function saveEdit(e) {
         customId: document.getElementById('edit-id').value.trim(),
         name: document.getElementById('edit-name').value.trim(),
         shortName: document.getElementById('edit-shortName').value.trim(),
-        taxId: document.getElementById('edit-taxId').value.trim(),
+        taxId: (function() {
+            const t = document.getElementById('edit-taxIdType').value;
+            if (t === 'none') return '無統編';
+            if (t === 'notNeeded') return '無需統編';
+            return document.getElementById('edit-taxId').value.trim();
+        })(),
         zipCode: document.getElementById('edit-zipCode').value.trim(),
         contact: document.getElementById('edit-contact').value.trim(),
         invoiceAddr: document.getElementById('edit-invoiceAddr').value.trim(),
