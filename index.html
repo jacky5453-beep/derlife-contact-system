@@ -570,14 +570,22 @@ function goToAdmin() {
     }
 }
 
-async function loginWithGoogle() {
-    try {
-        const result = await auth.signInWithPopup(provider);
-        const email = result.user.email;
+// 使用 redirect 取代 popup，避免 Chrome COOP 問題
+function loginWithGoogle() {
+    auth.signInWithRedirect(provider).catch(err => {
+        console.error(err);
+        showToast('登入失敗', 'error');
+    });
+}
 
-        // 首次使用：如果白名單完全為空，自動將第一個登入者設為管理員
-        const whitelistSnapshot = await db.collection(COLLECTIONS.whitelist).limit(1).get();
-        if (whitelistSnapshot.empty) {
+// 頁面載入時處理 redirect 回來的登入結果
+auth.getRedirectResult().then(async (result) => {
+    if (!result || !result.user) return;
+    const email = result.user.email;
+    try {
+        // 首次使用：白名單為空時自動設第一位為管理員
+        const snap = await db.collection(COLLECTIONS.whitelist).limit(1).get();
+        if (snap.empty) {
             await db.collection(COLLECTIONS.whitelist).doc(email).set({
                 addedAt: firebase.firestore.FieldValue.serverTimestamp(),
                 addedBy: 'system-init',
@@ -585,15 +593,13 @@ async function loginWithGoogle() {
             });
             showToast('系統初始化完成，已設定您為管理員');
         }
-
-        // 檢查白名單
-        const whitelistDoc = await db.collection(COLLECTIONS.whitelist).doc(email).get();
-        if (!whitelistDoc.exists) {
+        // 白名單驗證
+        const doc = await db.collection(COLLECTIONS.whitelist).doc(email).get();
+        if (!doc.exists) {
             await auth.signOut();
             showToast('此帳號未被授權使用後台', 'error');
             return;
         }
-
         currentUser = result.user;
         updateUserUI();
         navigateTo('admin');
@@ -603,7 +609,7 @@ async function loginWithGoogle() {
         console.error(err);
         showToast('登入失敗', 'error');
     }
-}
+}).catch(err => console.error(err));
 
 function logout() {
     auth.signOut();
@@ -626,18 +632,16 @@ function updateUserUI() {
     }
 }
 
-// 監聽登入狀態
+// 監聽登入狀態（不自動登出，避免與 redirect 結果競爭）
 auth.onAuthStateChanged(async (user) => {
     if (user) {
         const whitelistDoc = await db.collection(COLLECTIONS.whitelist).doc(user.email).get();
         if (whitelistDoc.exists) {
             currentUser = user;
-            updateUserUI();
         } else {
-            await auth.signOut();
             currentUser = null;
-            updateUserUI();
         }
+        updateUserUI();
     } else {
         currentUser = null;
         updateUserUI();
