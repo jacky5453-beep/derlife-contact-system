@@ -90,8 +90,8 @@
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path>
                     </svg>
                 </div>
-                <h3 class="text-xl font-bold text-brand-dark mb-2">我是廠商</h3>
-                <p class="text-gray-400 text-sm">填寫廠商基本資料</p>
+                <h3 class="text-xl font-bold text-brand-dark mb-2">我要賣貨</h3>
+                <p class="text-gray-400 text-sm">廠商提供商品給得來素</p>
             </div>
             <!-- 客戶 -->
             <div onclick="startForm('customer')"
@@ -101,8 +101,8 @@
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"></path>
                     </svg>
                 </div>
-                <h3 class="text-xl font-bold text-brand-dark mb-2">我是客戶</h3>
-                <p class="text-gray-400 text-sm">填寫客戶基本資料</p>
+                <h3 class="text-xl font-bold text-brand-dark mb-2">我要買貨</h3>
+                <p class="text-gray-400 text-sm">客戶向得來素採購</p>
             </div>
         </div>
     </div>
@@ -123,6 +123,18 @@
                     <div class="sm:col-span-2">
                         <label id="lbl-name" class="block text-sm font-medium text-gray-700 mb-1"></label>
                         <input name="name" type="text" required class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-brand focus:border-brand outline-none">
+                    </div>
+                    <!-- 客戶類型（僅客戶顯示） -->
+                    <div class="sm:col-span-2 hidden" id="customer-type-wrap">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">客戶類型 *</label>
+                        <select name="customerType" id="customerType" class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-brand focus:border-brand outline-none">
+                            <option value="">請選擇</option>
+                            <option value="團購">團購</option>
+                            <option value="經銷/批發">經銷/批發</option>
+                            <option value="餐廳">餐廳（餐飲進貨）</option>
+                            <option value="實體店面銷售">實體店面銷售（素料店/素食超市）</option>
+                            <option value="貿易商">貿易商</option>
+                        </select>
                     </div>
                     <!-- 簡稱 -->
                     <div>
@@ -246,6 +258,10 @@
                 class="px-5 py-2 rounded-lg font-medium text-sm transition admin-tab bg-gray-200 text-gray-600 hover:bg-gray-300">
                 客戶資料
             </button>
+            <button onclick="switchAdminTab('product')" id="tab-product"
+                class="px-5 py-2 rounded-lg font-medium text-sm transition admin-tab bg-gray-200 text-gray-600 hover:bg-gray-300">
+                產品報價
+            </button>
             <button onclick="switchAdminTab('whitelist')" id="tab-whitelist"
                 class="px-5 py-2 rounded-lg font-medium text-sm transition admin-tab bg-gray-200 text-gray-600 hover:bg-gray-300">
                 帳號權限管理
@@ -292,6 +308,7 @@
                             <th class="p-3" id="th-id">編號</th>
                             <th class="p-3" id="th-name">名稱</th>
                             <th class="p-3">簡稱</th>
+                            <th class="p-3 hidden" id="th-customer-type">客戶類型</th>
                             <th class="p-3">統一編號</th>
                             <th class="p-3">主聯絡人</th>
                             <th class="p-3">電話號碼</th>
@@ -309,6 +326,57 @@
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
                 </svg>
                 <p>目前沒有資料</p>
+            </div>
+        </div>
+
+        <!-- 產品報價管理 -->
+        <div id="admin-product" class="bg-white rounded-2xl shadow-md p-4 sm:p-6 hidden">
+            <div class="flex flex-col sm:flex-row gap-3 mb-4 items-start sm:items-center justify-between">
+                <div class="flex items-center gap-2 flex-1 w-full sm:w-auto">
+                    <select id="product-filter-type" onchange="renderProductTable()" class="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-brand focus:border-brand outline-none">
+                        <option value="">全部客戶類型</option>
+                        <option value="團購">團購</option>
+                        <option value="經銷/批發">經銷/批發</option>
+                        <option value="餐廳">餐廳</option>
+                        <option value="實體店面銷售">實體店面銷售</option>
+                        <option value="貿易商">貿易商</option>
+                    </select>
+                    <input type="search" id="product-search" placeholder="搜尋產品..." oninput="renderProductTable()"
+                        class="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-brand focus:border-brand outline-none">
+                    <span id="product-count" class="text-sm text-gray-400 whitespace-nowrap"></span>
+                </div>
+                <div class="flex gap-2 flex-wrap">
+                    <button onclick="openProductModal()" class="px-4 py-2 rounded-lg text-sm font-medium text-brand-dark" style="background: #C3F000;">
+                        + 新增產品
+                    </button>
+                    <label class="px-4 py-2 rounded-lg text-sm font-medium text-white cursor-pointer" style="background: #1A1A16;">
+                        匯入 Excel
+                        <input type="file" accept=".xlsx,.xls,.csv" class="hidden" onchange="importProducts(event)">
+                    </label>
+                    <button onclick="downloadProductTemplate()" class="px-4 py-2 rounded-lg text-sm font-medium text-brand-dark border border-gray-300 hover:bg-gray-50">
+                        下載匯入範本
+                    </button>
+                </div>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="data-table w-full text-sm">
+                    <thead>
+                        <tr class="bg-brand-dark text-white text-left">
+                            <th class="p-3 rounded-tl-lg">客戶類型</th>
+                            <th class="p-3">產品編號</th>
+                            <th class="p-3">產品名稱</th>
+                            <th class="p-3">規格</th>
+                            <th class="p-3">單位</th>
+                            <th class="p-3 text-right">報價</th>
+                            <th class="p-3">備註</th>
+                            <th class="p-3 rounded-tr-lg">操作</th>
+                        </tr>
+                    </thead>
+                    <tbody id="product-tbody"></tbody>
+                </table>
+            </div>
+            <div id="product-empty" class="hidden text-center py-12 text-gray-400">
+                <p>尚未建立產品，請新增或匯入</p>
             </div>
         </div>
 
@@ -353,6 +421,17 @@
                 <div>
                     <label id="edit-lbl-short" class="block text-sm font-medium text-gray-700 mb-1"></label>
                     <input id="edit-shortName" type="text" class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-brand focus:border-brand outline-none">
+                </div>
+                <div class="hidden" id="edit-customerType-wrap">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">客戶類型</label>
+                    <select id="edit-customerType" class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-brand focus:border-brand outline-none">
+                        <option value="">未分類</option>
+                        <option value="團購">團購</option>
+                        <option value="經銷/批發">經銷/批發</option>
+                        <option value="餐廳">餐廳（餐飲進貨）</option>
+                        <option value="實體店面銷售">實體店面銷售（素料店/素食超市）</option>
+                        <option value="貿易商">貿易商</option>
+                    </select>
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">統一編號</label>
@@ -406,7 +485,10 @@
                     <textarea id="edit-note" rows="3" class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-brand focus:border-brand outline-none"></textarea>
                 </div>
             </div>
-            <div class="mt-6 flex justify-end gap-3">
+            <div class="mt-6 flex justify-end gap-3 flex-wrap">
+                <button type="button" id="edit-btn-quote" onclick="openQuoteForCustomer()" class="hidden px-4 py-2 rounded-lg text-sm font-medium text-brand-dark transition" style="background: #FFAA00;">
+                    產生報價單
+                </button>
                 <button type="button" onclick="deleteRecord()" class="px-4 py-2 rounded-lg text-sm font-medium text-red-600 border border-red-300 hover:bg-red-50 transition">
                     刪除
                 </button>
@@ -418,6 +500,115 @@
                 </button>
             </div>
         </form>
+    </div>
+</div>
+
+<!-- ===== 產品新增/編輯彈窗 ===== -->
+<div id="modal-product" class="fixed inset-0 z-50 hidden">
+    <div class="absolute inset-0 bg-black/40" onclick="closeProductModal()"></div>
+    <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-white rounded-2xl shadow-2xl w-full max-w-xl max-h-[90vh] overflow-y-auto p-6">
+        <div class="flex items-center justify-between mb-4">
+            <h3 id="product-modal-title" class="text-xl font-bold text-brand-dark">新增產品</h3>
+            <button onclick="closeProductModal()" class="text-gray-400 hover:text-gray-600">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+            </button>
+        </div>
+        <form id="product-form" onsubmit="saveProduct(event)">
+            <input type="hidden" id="product-doc-id">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div class="sm:col-span-2">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">客戶類型 *</label>
+                    <select id="product-customerType" required class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-brand focus:border-brand outline-none">
+                        <option value="">請選擇</option>
+                        <option value="團購">團購</option>
+                        <option value="經銷/批發">經銷/批發</option>
+                        <option value="餐廳">餐廳（餐飲進貨）</option>
+                        <option value="實體店面銷售">實體店面銷售（素料店/素食超市）</option>
+                        <option value="貿易商">貿易商</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">產品編號</label>
+                    <input id="product-code" type="text" class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-brand focus:border-brand outline-none">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">產品名稱 *</label>
+                    <input id="product-name" type="text" required class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-brand focus:border-brand outline-none">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">規格</label>
+                    <input id="product-spec" type="text" placeholder="例：1kg / 包" class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-brand focus:border-brand outline-none">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">單位</label>
+                    <input id="product-unit" type="text" placeholder="例：包/箱/件" class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-brand focus:border-brand outline-none">
+                </div>
+                <div class="sm:col-span-2">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">報價（單價）*</label>
+                    <input id="product-price" type="number" min="0" step="0.01" required class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-brand focus:border-brand outline-none">
+                </div>
+                <div class="sm:col-span-2">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">備註</label>
+                    <textarea id="product-note" rows="2" class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-brand focus:border-brand outline-none"></textarea>
+                </div>
+            </div>
+            <div class="mt-6 flex justify-end gap-3">
+                <button type="button" id="product-btn-delete" onclick="deleteProduct()" class="hidden px-4 py-2 rounded-lg text-sm font-medium text-red-600 border border-red-300 hover:bg-red-50">刪除</button>
+                <button type="button" onclick="closeProductModal()" class="px-4 py-2 rounded-lg text-sm font-medium border border-gray-300 text-gray-600 hover:bg-gray-50">取消</button>
+                <button type="submit" class="px-6 py-2 rounded-lg text-sm font-bold text-brand-dark" style="background: #C3F000;">儲存</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- ===== 產生報價單彈窗 ===== -->
+<div id="modal-quote" class="fixed inset-0 z-50 hidden">
+    <div class="absolute inset-0 bg-black/40" onclick="closeQuoteModal()"></div>
+    <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-white rounded-2xl shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-y-auto p-6">
+        <div class="flex items-center justify-between mb-4">
+            <h3 class="text-xl font-bold text-brand-dark">產生報價單</h3>
+            <button onclick="closeQuoteModal()" class="text-gray-400 hover:text-gray-600">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+            </button>
+        </div>
+        <div class="bg-gray-50 rounded-lg p-3 mb-4 text-sm">
+            <p>客戶：<span id="quote-customer-name" class="font-bold text-brand-dark"></span></p>
+            <p>客戶類型：<span id="quote-customer-type" class="font-bold text-brand-dark"></span></p>
+        </div>
+        <div class="mb-3 flex items-center justify-between">
+            <p class="text-sm text-gray-500">勾選要報價的產品並填入數量：</p>
+            <div class="text-sm">
+                <label class="inline-flex items-center gap-2">
+                    <input type="checkbox" id="quote-select-all" class="custom-checkbox" onchange="toggleQuoteSelectAll(this)">
+                    全選
+                </label>
+            </div>
+        </div>
+        <div class="overflow-x-auto max-h-[50vh] border border-gray-200 rounded-lg">
+            <table class="w-full text-sm">
+                <thead class="bg-gray-100 text-left sticky top-0">
+                    <tr>
+                        <th class="p-2 w-10"></th>
+                        <th class="p-2">產品編號</th>
+                        <th class="p-2">產品名稱</th>
+                        <th class="p-2">規格</th>
+                        <th class="p-2">單位</th>
+                        <th class="p-2 text-right">單價</th>
+                        <th class="p-2 w-24 text-right">數量</th>
+                        <th class="p-2 text-right">小計</th>
+                    </tr>
+                </thead>
+                <tbody id="quote-product-tbody"></tbody>
+            </table>
+        </div>
+        <div id="quote-empty" class="hidden text-center py-6 text-gray-400 text-sm">此客戶類型尚未建立任何產品報價</div>
+        <div class="mt-4 text-right">
+            <p class="text-sm text-gray-500">勾選 <span id="quote-selected-count" class="font-bold text-brand-dark">0</span> 項，總計 <span id="quote-total" class="font-bold text-brand-dark">0</span> 元</p>
+        </div>
+        <div class="mt-6 flex justify-end gap-3">
+            <button type="button" onclick="closeQuoteModal()" class="px-4 py-2 rounded-lg text-sm font-medium border border-gray-300 text-gray-600 hover:bg-gray-50">取消</button>
+            <button type="button" onclick="exportQuote()" class="px-6 py-2 rounded-lg text-sm font-bold text-brand-dark" style="background: #C3F000;">匯出報價單 Excel</button>
+        </div>
     </div>
 </div>
 
@@ -454,8 +645,15 @@ let selectedIds = new Set();
 const COLLECTIONS = {
     supplier: 'contact-suppliers',
     customer: 'contact-customers',
+    product: 'contact-products',
     whitelist: 'contact-whitelist'
 };
+
+// 產品快取
+let allProducts = [];
+// 報價單暫存：當前客戶資料
+let quoteCustomer = null;
+let quoteRows = []; // [{productId, qty}]
 
 // ===== 頁面導覽 =====
 function navigateTo(page) {
@@ -476,13 +674,23 @@ function showToast(msg, type = 'success') {
 function startForm(type) {
     currentFormType = type;
     const isSupplier = type === 'supplier';
-    document.getElementById('form-title').textContent = isSupplier ? '廠商資料填寫' : '客戶資料填寫';
+    document.getElementById('form-title').textContent = isSupplier ? '廠商資料填寫（我要賣貨）' : '客戶資料填寫（我要買貨）';
     document.getElementById('lbl-name').textContent = isSupplier ? '廠商名稱 *' : '客戶名稱 *';
     document.getElementById('lbl-short').textContent = isSupplier ? '廠商簡稱' : '客戶簡稱';
     document.getElementById('data-form').reset();
     // 重置統編輸入框狀態
     const taxInput = document.getElementById('taxIdInput');
     taxInput.disabled = false;
+    // 客戶類型欄位：客戶才顯示且必填
+    const ctWrap = document.getElementById('customer-type-wrap');
+    const ctSelect = document.getElementById('customerType');
+    if (isSupplier) {
+        ctWrap.classList.add('hidden');
+        ctSelect.required = false;
+    } else {
+        ctWrap.classList.remove('hidden');
+        ctSelect.required = true;
+    }
     navigateTo('form');
 }
 
@@ -531,6 +739,7 @@ async function submitForm(e) {
         const data = {
             type: currentFormType,
             customId: '', // 編號由後台手動填
+            customerType: currentFormType === 'customer' ? (form.customerType.value || '') : '',
             name: form.name.value.trim(),
             shortName: form.shortName.value.trim(),
             taxId: form.taxIdType.value === 'none' ? '無統編'
@@ -659,13 +868,21 @@ function switchAdminTab(tab) {
     activeBtn.style.background = '#C3F000';
     activeBtn.style.color = '#1A1A16';
 
+    const dataEl = document.getElementById('admin-data');
+    const productEl = document.getElementById('admin-product');
+    const whitelistEl = document.getElementById('admin-whitelist');
+    dataEl.classList.add('hidden');
+    productEl.classList.add('hidden');
+    whitelistEl.classList.add('hidden');
+
     if (tab === 'whitelist') {
-        document.getElementById('admin-data').classList.add('hidden');
-        document.getElementById('admin-whitelist').classList.remove('hidden');
+        whitelistEl.classList.remove('hidden');
         loadWhitelist();
+    } else if (tab === 'product') {
+        productEl.classList.remove('hidden');
+        loadProducts();
     } else {
-        document.getElementById('admin-data').classList.remove('hidden');
-        document.getElementById('admin-whitelist').classList.add('hidden');
+        dataEl.classList.remove('hidden');
         loadAdminData();
     }
 }
@@ -673,11 +890,15 @@ function switchAdminTab(tab) {
 // ===== 後台：載入資料 =====
 async function loadAdminData() {
     const type = currentAdminTab;
-    if (type === 'whitelist') return;
+    if (type !== 'supplier' && type !== 'customer') return;
 
     const isSupplier = type === 'supplier';
     document.getElementById('th-id').textContent = isSupplier ? '廠商編號' : '客戶編號';
     document.getElementById('th-name').textContent = isSupplier ? '廠商名稱' : '客戶名稱';
+    // 客戶類型欄位只在客戶分頁顯示
+    const thCustomerType = document.getElementById('th-customer-type');
+    if (isSupplier) thCustomerType.classList.add('hidden');
+    else thCustomerType.classList.remove('hidden');
 
     try {
         const snapshot = await db.collection(COLLECTIONS[type]).orderBy('createdAt', 'desc').get();
@@ -709,22 +930,31 @@ function renderTable(data) {
     empty.classList.add('hidden');
     countEl.textContent = `共 ${data.length} 筆`;
 
+    const isCustomer = currentAdminTab === 'customer';
     tbody.innerHTML = data.map(item => {
         const time = item.createdAt ? new Date(item.createdAt.seconds * 1000).toLocaleString('zh-TW') : '-';
         const checked = selectedIds.has(item.id) ? 'checked' : '';
+        const ctCell = isCustomer
+            ? `<td class="p-3"><span class="inline-block px-2 py-0.5 rounded text-xs ${item.customerType ? 'bg-orange-100 text-orange-700' : 'bg-gray-100 text-gray-400'}">${escHtml(item.customerType || '未分類')}</span></td>`
+            : '';
+        const quoteBtn = isCustomer
+            ? `<button onclick="openQuoteFromRow('${item.id}')" class="text-orange-500 hover:text-orange-700 text-sm font-medium ml-2">報價</button>`
+            : '';
         return `<tr class="border-b border-gray-100">
             <td class="p-3"><input type="checkbox" class="custom-checkbox" ${checked} onchange="toggleSelect('${item.id}', this.checked)"></td>
             <td class="p-3 font-mono text-xs">${item.customId || '<span class=&quot;text-gray-300&quot;>未填</span>'}</td>
             <td class="p-3 font-medium">${escHtml(item.name || '')}</td>
             <td class="p-3">${escHtml(item.shortName || '')}</td>
+            ${ctCell}
             <td class="p-3 font-mono">${escHtml(item.taxId || '')}</td>
             <td class="p-3">${escHtml(item.contact || '')}</td>
             <td class="p-3">${escHtml(item.phone || '')}</td>
             <td class="p-3">${escHtml(item.mobile || '')}</td>
             <td class="p-3">${escHtml(item.email || '')}</td>
             <td class="p-3 text-xs text-gray-400">${time}</td>
-            <td class="p-3">
+            <td class="p-3 whitespace-nowrap">
                 <button onclick="openEditModal('${item.id}')" class="text-blue-500 hover:text-blue-700 text-sm font-medium">編輯</button>
+                ${quoteBtn}
             </td>
         </tr>`;
     }).join('');
@@ -801,6 +1031,17 @@ function openEditModal(docId) {
     document.getElementById('edit-id').value = item.customId || '';
     document.getElementById('edit-name').value = item.name || '';
     document.getElementById('edit-shortName').value = item.shortName || '';
+    // 客戶類型欄位 + 報價按鈕只在客戶分頁顯示
+    const ctWrap = document.getElementById('edit-customerType-wrap');
+    const quoteBtn = document.getElementById('edit-btn-quote');
+    if (isSupplier) {
+        ctWrap.classList.add('hidden');
+        quoteBtn.classList.add('hidden');
+    } else {
+        ctWrap.classList.remove('hidden');
+        quoteBtn.classList.remove('hidden');
+        document.getElementById('edit-customerType').value = item.customerType || '';
+    }
     // 統一編號：判斷是否為「無統編／無需統編」
     const editTaxIdType = document.getElementById('edit-taxIdType');
     const editTaxIdInput = document.getElementById('edit-taxId');
@@ -844,6 +1085,7 @@ async function saveEdit(e) {
         customId: document.getElementById('edit-id').value.trim(),
         name: document.getElementById('edit-name').value.trim(),
         shortName: document.getElementById('edit-shortName').value.trim(),
+        customerType: type === 'customer' ? (document.getElementById('edit-customerType').value || '') : '',
         taxId: (function() {
             const t = document.getElementById('edit-taxIdType').value;
             if (t === 'none') return '無統編';
@@ -1110,6 +1352,332 @@ async function removeWhitelist(email) {
         console.error(err);
         showToast('移除失敗', 'error');
     }
+}
+
+// ===== 後台：產品報價管理 =====
+async function loadProducts() {
+    try {
+        const snapshot = await db.collection(COLLECTIONS.product).orderBy('customerType').get();
+        allProducts = [];
+        snapshot.forEach(doc => allProducts.push({ id: doc.id, ...doc.data() }));
+        renderProductTable();
+    } catch (err) {
+        console.error(err);
+        showToast('載入產品失敗', 'error');
+    }
+}
+
+function renderProductTable() {
+    const tbody = document.getElementById('product-tbody');
+    const empty = document.getElementById('product-empty');
+    const countEl = document.getElementById('product-count');
+    const filter = document.getElementById('product-filter-type').value;
+    const q = (document.getElementById('product-search').value || '').trim().toLowerCase();
+
+    let list = allProducts.slice();
+    if (filter) list = list.filter(p => p.customerType === filter);
+    if (q) list = list.filter(p =>
+        (p.name || '').toLowerCase().includes(q) ||
+        (p.code || '').toLowerCase().includes(q) ||
+        (p.spec || '').toLowerCase().includes(q)
+    );
+
+    countEl.textContent = `共 ${list.length} 筆`;
+    if (list.length === 0) {
+        tbody.innerHTML = '';
+        empty.classList.remove('hidden');
+        return;
+    }
+    empty.classList.add('hidden');
+    tbody.innerHTML = list.map(p => `<tr class="border-b border-gray-100">
+        <td class="p-3"><span class="inline-block px-2 py-0.5 rounded text-xs bg-orange-100 text-orange-700">${escHtml(p.customerType || '')}</span></td>
+        <td class="p-3 font-mono text-xs">${escHtml(p.code || '')}</td>
+        <td class="p-3 font-medium">${escHtml(p.name || '')}</td>
+        <td class="p-3">${escHtml(p.spec || '')}</td>
+        <td class="p-3">${escHtml(p.unit || '')}</td>
+        <td class="p-3 text-right font-mono">${formatPrice(p.price)}</td>
+        <td class="p-3 text-xs text-gray-500">${escHtml(p.note || '')}</td>
+        <td class="p-3"><button onclick="openProductModal('${p.id}')" class="text-blue-500 hover:text-blue-700 text-sm font-medium">編輯</button></td>
+    </tr>`).join('');
+}
+
+function formatPrice(v) {
+    const n = Number(v);
+    if (isNaN(n)) return '';
+    return n.toLocaleString('zh-TW', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+}
+
+function openProductModal(docId) {
+    document.getElementById('product-form').reset();
+    document.getElementById('product-doc-id').value = docId || '';
+    document.getElementById('product-modal-title').textContent = docId ? '編輯產品' : '新增產品';
+    document.getElementById('product-btn-delete').classList.toggle('hidden', !docId);
+    if (docId) {
+        const p = allProducts.find(x => x.id === docId);
+        if (p) {
+            document.getElementById('product-customerType').value = p.customerType || '';
+            document.getElementById('product-code').value = p.code || '';
+            document.getElementById('product-name').value = p.name || '';
+            document.getElementById('product-spec').value = p.spec || '';
+            document.getElementById('product-unit').value = p.unit || '';
+            document.getElementById('product-price').value = p.price ?? '';
+            document.getElementById('product-note').value = p.note || '';
+        }
+    } else {
+        // 預設帶入目前篩選的客戶類型
+        const filter = document.getElementById('product-filter-type').value;
+        if (filter) document.getElementById('product-customerType').value = filter;
+    }
+    document.getElementById('modal-product').classList.remove('hidden');
+}
+
+function closeProductModal() {
+    document.getElementById('modal-product').classList.add('hidden');
+}
+
+async function saveProduct(e) {
+    e.preventDefault();
+    const docId = document.getElementById('product-doc-id').value;
+    const data = {
+        customerType: document.getElementById('product-customerType').value,
+        code: document.getElementById('product-code').value.trim(),
+        name: document.getElementById('product-name').value.trim(),
+        spec: document.getElementById('product-spec').value.trim(),
+        unit: document.getElementById('product-unit').value.trim(),
+        price: Number(document.getElementById('product-price').value) || 0,
+        note: document.getElementById('product-note').value.trim(),
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+    };
+    try {
+        if (docId) {
+            await db.collection(COLLECTIONS.product).doc(docId).update(data);
+            showToast('已更新');
+        } else {
+            data.createdAt = firebase.firestore.FieldValue.serverTimestamp();
+            await db.collection(COLLECTIONS.product).add(data);
+            showToast('已新增');
+        }
+        closeProductModal();
+        loadProducts();
+    } catch (err) {
+        console.error(err);
+        showToast('儲存失敗', 'error');
+    }
+}
+
+async function deleteProduct() {
+    const docId = document.getElementById('product-doc-id').value;
+    if (!docId) return;
+    if (!confirm('確定要刪除這個產品嗎？')) return;
+    try {
+        await db.collection(COLLECTIONS.product).doc(docId).delete();
+        closeProductModal();
+        showToast('已刪除');
+        loadProducts();
+    } catch (err) {
+        console.error(err);
+        showToast('刪除失敗', 'error');
+    }
+}
+
+// ----- 產品匯入/匯出範本 -----
+function downloadProductTemplate() {
+    const headers = ['客戶類型', '產品編號', '產品名稱', '規格', '單位', '報價', '備註'];
+    const sample = [
+        ['團購', 'P001', '範例：素肉乾', '300g/包', '包', 150, '示範資料，可刪除'],
+        ['經銷/批發', 'P002', '範例：素水餃', '20粒/包', '包', 80, '']
+    ];
+    const ws = XLSX.utils.aoa_to_sheet([headers, ...sample]);
+    ws['!cols'] = [{ wch: 18 }, { wch: 12 }, { wch: 25 }, { wch: 15 }, { wch: 8 }, { wch: 10 }, { wch: 25 }];
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, '產品報價');
+    XLSX.writeFile(wb, '產品報價匯入範本.xlsx');
+}
+
+const VALID_CUSTOMER_TYPES = ['團購', '經銷/批發', '餐廳', '實體店面銷售', '貿易商'];
+
+async function importProducts(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    try {
+        const buf = await file.arrayBuffer();
+        const wb = XLSX.read(buf, { type: 'array' });
+        const ws = wb.Sheets[wb.SheetNames[0]];
+        const rows = XLSX.utils.sheet_to_json(ws, { defval: '' });
+        if (rows.length === 0) {
+            showToast('檔案沒有資料', 'error');
+            e.target.value = '';
+            return;
+        }
+        let ok = 0, skip = 0;
+        const batch = db.batch();
+        rows.forEach(r => {
+            const ct = String(r['客戶類型'] || '').trim();
+            const name = String(r['產品名稱'] || '').trim();
+            if (!ct || !name || !VALID_CUSTOMER_TYPES.includes(ct)) {
+                skip++;
+                return;
+            }
+            const ref = db.collection(COLLECTIONS.product).doc();
+            batch.set(ref, {
+                customerType: ct,
+                code: String(r['產品編號'] || '').trim(),
+                name,
+                spec: String(r['規格'] || '').trim(),
+                unit: String(r['單位'] || '').trim(),
+                price: Number(r['報價']) || 0,
+                note: String(r['備註'] || '').trim(),
+                createdAt: firebase.firestore.FieldValue.serverTimestamp()
+            });
+            ok++;
+        });
+        await batch.commit();
+        showToast(`匯入完成：成功 ${ok} 筆，略過 ${skip} 筆`);
+        loadProducts();
+    } catch (err) {
+        console.error(err);
+        showToast('匯入失敗：' + err.message, 'error');
+    } finally {
+        e.target.value = '';
+    }
+}
+
+// ===== 後台：產生報價單 =====
+async function openQuoteFromRow(customerId) {
+    const customer = allData.find(d => d.id === customerId);
+    if (!customer) return;
+    if (!customer.customerType) {
+        showToast('此客戶尚未設定客戶類型，請先編輯', 'error');
+        return;
+    }
+    quoteCustomer = customer;
+    await ensureProductsLoaded();
+    renderQuoteModal();
+    document.getElementById('modal-quote').classList.remove('hidden');
+}
+
+async function openQuoteForCustomer() {
+    // 從編輯 modal 開啟
+    const docId = document.getElementById('edit-doc-id').value;
+    closeEditModal();
+    openQuoteFromRow(docId);
+}
+
+async function ensureProductsLoaded() {
+    if (allProducts.length === 0) {
+        const snapshot = await db.collection(COLLECTIONS.product).get();
+        allProducts = [];
+        snapshot.forEach(doc => allProducts.push({ id: doc.id, ...doc.data() }));
+    }
+}
+
+function renderQuoteModal() {
+    document.getElementById('quote-customer-name').textContent = quoteCustomer.name || '';
+    document.getElementById('quote-customer-type').textContent = quoteCustomer.customerType || '';
+    const list = allProducts.filter(p => p.customerType === quoteCustomer.customerType);
+    quoteRows = list.map(p => ({ productId: p.id, qty: 0, selected: false }));
+    const tbody = document.getElementById('quote-product-tbody');
+    const empty = document.getElementById('quote-empty');
+    if (list.length === 0) {
+        tbody.innerHTML = '';
+        empty.classList.remove('hidden');
+    } else {
+        empty.classList.add('hidden');
+        tbody.innerHTML = list.map((p, i) => `<tr class="border-b border-gray-100">
+            <td class="p-2"><input type="checkbox" class="custom-checkbox" data-idx="${i}" onchange="onQuoteRowChange(${i}, 'selected', this.checked)"></td>
+            <td class="p-2 font-mono text-xs">${escHtml(p.code || '')}</td>
+            <td class="p-2">${escHtml(p.name || '')}</td>
+            <td class="p-2">${escHtml(p.spec || '')}</td>
+            <td class="p-2">${escHtml(p.unit || '')}</td>
+            <td class="p-2 text-right font-mono">${formatPrice(p.price)}</td>
+            <td class="p-2 text-right"><input type="number" min="0" step="1" value="0" class="w-20 border border-gray-300 rounded px-2 py-1 text-right" onchange="onQuoteRowChange(${i}, 'qty', this.value)"></td>
+            <td class="p-2 text-right font-mono" id="quote-subtotal-${i}">0</td>
+        </tr>`).join('');
+    }
+    document.getElementById('quote-select-all').checked = false;
+    updateQuoteTotal();
+}
+
+function onQuoteRowChange(idx, field, val) {
+    if (field === 'qty') quoteRows[idx].qty = Number(val) || 0;
+    else if (field === 'selected') quoteRows[idx].selected = !!val;
+    const list = allProducts.filter(p => p.customerType === quoteCustomer.customerType);
+    const sub = (Number(list[idx].price) || 0) * (quoteRows[idx].qty || 0);
+    const cell = document.getElementById('quote-subtotal-' + idx);
+    if (cell) cell.textContent = formatPrice(sub);
+    updateQuoteTotal();
+}
+
+function toggleQuoteSelectAll(cb) {
+    document.querySelectorAll('#quote-product-tbody input[type="checkbox"]').forEach((c, i) => {
+        c.checked = cb.checked;
+        if (quoteRows[i]) quoteRows[i].selected = cb.checked;
+    });
+    updateQuoteTotal();
+}
+
+function updateQuoteTotal() {
+    const list = allProducts.filter(p => p.customerType === quoteCustomer.customerType);
+    let total = 0, count = 0;
+    quoteRows.forEach((r, i) => {
+        if (r.selected) {
+            count++;
+            total += (Number(list[i].price) || 0) * (r.qty || 0);
+        }
+    });
+    document.getElementById('quote-selected-count').textContent = count;
+    document.getElementById('quote-total').textContent = formatPrice(total);
+}
+
+function closeQuoteModal() {
+    document.getElementById('modal-quote').classList.add('hidden');
+    quoteCustomer = null;
+    quoteRows = [];
+}
+
+function exportQuote() {
+    const list = allProducts.filter(p => p.customerType === quoteCustomer.customerType);
+    const picks = [];
+    quoteRows.forEach((r, i) => {
+        if (r.selected) picks.push({ ...list[i], qty: r.qty || 0 });
+    });
+    if (picks.length === 0) {
+        showToast('請至少勾選一個產品', 'error');
+        return;
+    }
+
+    const today = (() => {
+        const d = new Date();
+        return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+    })();
+
+    const aoa = [
+        ['得來素企業有限公司　報價單'],
+        [],
+        ['客戶名稱', quoteCustomer.name || '', '', '客戶編號', quoteCustomer.customId || ''],
+        ['客戶類型', quoteCustomer.customerType || '', '', '報價日期', today],
+        ['聯絡人', quoteCustomer.contact || '', '', '聯絡電話', quoteCustomer.phone || quoteCustomer.mobile || ''],
+        [],
+        ['項次', '產品編號', '產品名稱', '規格', '單位', '單價', '數量', '小計', '備註']
+    ];
+    let total = 0;
+    picks.forEach((p, i) => {
+        const subtotal = (Number(p.price) || 0) * (p.qty || 0);
+        total += subtotal;
+        aoa.push([i + 1, p.code || '', p.name || '', p.spec || '', p.unit || '', Number(p.price) || 0, p.qty || 0, subtotal, p.note || '']);
+    });
+    aoa.push([]);
+    aoa.push(['', '', '', '', '', '', '總計', total, '']);
+
+    const ws = XLSX.utils.aoa_to_sheet(aoa);
+    ws['!cols'] = [{ wch: 6 }, { wch: 12 }, { wch: 25 }, { wch: 15 }, { wch: 8 }, { wch: 10 }, { wch: 8 }, { wch: 12 }, { wch: 20 }];
+    ws['!merges'] = [{ s: { r: 0, c: 0 }, e: { r: 0, c: 8 } }];
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, '報價單');
+    const safeName = (quoteCustomer.name || '客戶').replace(/[\\/:*?"<>|]/g, '');
+    XLSX.writeFile(wb, `報價單_${safeName}_${today}.xlsx`);
+    showToast('報價單已匯出');
+    closeQuoteModal();
 }
 </script>
 
