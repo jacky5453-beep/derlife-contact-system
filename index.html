@@ -585,6 +585,17 @@
         <div class="mt-4 text-right">
             <p class="text-sm text-gray-500">已勾選 <span id="quote-selected-count" class="font-bold text-brand-dark">0</span> 項商品</p>
         </div>
+
+        <!-- 可編輯注意事項 -->
+        <div class="mt-4">
+            <div class="flex items-center justify-between mb-1">
+                <label class="block text-sm font-medium text-gray-700">📌 注意事項（會印在報價單下方，可依客戶調整）</label>
+                <button type="button" onclick="resetQuoteNotes()" class="text-xs text-blue-500 hover:text-blue-700">重設為預設</button>
+            </div>
+            <textarea id="quote-notes" rows="4" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-brand focus:border-brand outline-none font-mono"></textarea>
+            <p class="text-xs text-gray-400 mt-1">每行一條，匯出時自動編號（1. 2. 3. …）。空白行會略過。</p>
+        </div>
+
         <div class="mt-6 flex justify-end gap-3 flex-wrap">
             <button type="button" onclick="closeQuoteModal()" class="px-4 py-2 rounded-lg text-sm font-medium border border-gray-300 text-gray-600 hover:bg-gray-50">取消</button>
             <button type="button" onclick="exportQuote()" class="px-4 py-2 rounded-lg text-sm font-medium text-brand-dark border border-gray-300 hover:bg-gray-50">匯出 Excel</button>
@@ -1816,9 +1827,33 @@ function getQuoteList() {
     return allProducts.filter(p => !p._deleted && p.customerType === quoteCustomer.customerType);
 }
 
+function getDefaultQuoteNotes() {
+    const d = new Date();
+    const validUntil = `${d.getFullYear()}.12.31`;
+    return [
+        `本報價單有效期限至 ${validUntil}`,
+        `此報價金額皆為含稅價`,
+        `訂購需滿 $7,000 即可享有此報價優惠價格（免運費）`
+    ].join('\n');
+}
+
+function resetQuoteNotes() {
+    const ta = document.getElementById('quote-notes');
+    if (ta) ta.value = getDefaultQuoteNotes();
+}
+
+function getQuoteNotesArray() {
+    const raw = (document.getElementById('quote-notes').value || '').trim();
+    if (!raw) return [];
+    return raw.split(/\r?\n/).map(s => s.trim()).filter(Boolean);
+}
+
 function renderQuoteModal() {
     document.getElementById('quote-customer-name').textContent = quoteCustomer.name || '';
     document.getElementById('quote-customer-type').textContent = quoteCustomer.customerType || '';
+    // 預設注意事項
+    const ta = document.getElementById('quote-notes');
+    if (ta && !ta.value.trim()) ta.value = getDefaultQuoteNotes();
     const list = getQuoteList();
     quoteRows = list.map(p => ({ productId: p._id, selected: false }));
     const tbody = document.getElementById('quote-product-tbody');
@@ -1865,6 +1900,8 @@ function closeQuoteModal() {
     document.getElementById('modal-quote').classList.add('hidden');
     quoteCustomer = null;
     quoteRows = [];
+    const ta = document.getElementById('quote-notes');
+    if (ta) ta.value = '';
 }
 
 function exportQuote() {
@@ -1910,9 +1947,10 @@ function exportQuote() {
     });
     aoa.push([]);
     aoa.push([]);
-    aoa.push(['PS：', `1.本報價單有效期限至${validUntil}`]);
-    aoa.push(['', '2.此報價金額皆為含稅價']);
-    aoa.push(['', '3.訂購需滿$7000即可享有此報價優惠價格(免運費)']);
+    const notes = getQuoteNotesArray();
+    notes.forEach((n, i) => {
+        aoa.push([i === 0 ? 'PS：' : '', `${i + 1}.${n}`]);
+    });
 
     const ws = XLSX.utils.aoa_to_sheet(aoa);
     ws['!cols'] = [
@@ -1934,10 +1972,10 @@ function exportQuote() {
 
 // ===== 後台：匯出 PDF 報價單（品牌色設計） =====
 
-function buildQuotePdfHtml(picks, customer) {
+function buildQuotePdfHtml(picks, customer, notes) {
     const d = new Date();
     const today = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
-    const validUntil = `${d.getFullYear()}.12.31`;
+    const noteList = (notes && notes.length) ? notes : getQuoteNotesArray();
 
     const rows = picks.map((p, i) => {
         const bg = i % 2 === 0 ? '#FFFFFF' : '#F8FCE8';
@@ -2021,14 +2059,13 @@ function buildQuotePdfHtml(picks, customer) {
         </table>
 
         <!-- ===== 注意事項（橘色強調） ===== -->
+        ${noteList.length > 0 ? `
         <div style="background: #FFF7E0; border-left: 4px solid #FFAA00; padding: 12px 16px; font-size: 12px; line-height: 1.8; border-radius: 0 6px 6px 0; margin-bottom: 18px;">
             <div style="font-weight: 700; color: #1A1A16; margin-bottom: 4px; letter-spacing: 1px;">📌 注意事項</div>
             <ol style="margin: 0; padding-left: 20px; color: #555;">
-                <li>本報價單有效期限至 <span style="color: #1A1A16; font-weight: 600;">${validUntil}</span></li>
-                <li>此報價金額皆為<span style="color: #1A1A16; font-weight: 600;">含稅價</span></li>
-                <li>訂購需滿 <span style="color: #1A1A16; font-weight: 600;">$7,000</span> 即可享有此報價優惠價格（免運費）</li>
+                ${noteList.map(n => `<li>${escAttr(n)}</li>`).join('')}
             </ol>
-        </div>
+        </div>` : ''}
 
         <!-- ===== Footer ===== -->
         <div style="text-align: center; color: #999; font-size: 10px; border-top: 1px solid #EEE; padding-top: 12px; letter-spacing: 1px;">
@@ -2056,7 +2093,7 @@ async function exportQuotePDF() {
     btn.innerHTML = '產生 PDF 中...';
 
     const container = document.getElementById('pdf-render-area');
-    container.innerHTML = buildQuotePdfHtml(picks, quoteCustomer);
+    container.innerHTML = buildQuotePdfHtml(picks, quoteCustomer, getQuoteNotesArray());
 
     try {
         // 等 logo 圖片載入
