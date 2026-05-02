@@ -10,6 +10,9 @@
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
     <!-- SheetJS -->
     <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
+    <!-- html2canvas + jsPDF（PDF 匯出用） -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
@@ -52,6 +55,9 @@
 
 <!-- Toast 通知容器 -->
 <div id="toast" class="toast"></div>
+
+<!-- PDF 渲染區（畫面外，匯出 PDF 用） -->
+<div id="pdf-render-area" style="position: fixed; left: -99999px; top: 0; background: white;"></div>
 
 <!-- ===== 頁首 ===== -->
 <header class="bg-brand-dark text-white shadow-lg">
@@ -579,9 +585,10 @@
         <div class="mt-4 text-right">
             <p class="text-sm text-gray-500">已勾選 <span id="quote-selected-count" class="font-bold text-brand-dark">0</span> 項商品</p>
         </div>
-        <div class="mt-6 flex justify-end gap-3">
+        <div class="mt-6 flex justify-end gap-3 flex-wrap">
             <button type="button" onclick="closeQuoteModal()" class="px-4 py-2 rounded-lg text-sm font-medium border border-gray-300 text-gray-600 hover:bg-gray-50">取消</button>
-            <button type="button" onclick="exportQuote()" class="px-6 py-2 rounded-lg text-sm font-bold text-brand-dark" style="background: #C3F000;">匯出報價單 Excel</button>
+            <button type="button" onclick="exportQuote()" class="px-4 py-2 rounded-lg text-sm font-medium text-brand-dark border border-gray-300 hover:bg-gray-50">匯出 Excel</button>
+            <button type="button" onclick="exportQuotePDF()" id="btn-export-pdf" class="px-6 py-2 rounded-lg text-sm font-bold text-brand-dark" style="background: #C3F000;">📄 匯出 PDF（給客人）</button>
         </div>
     </div>
 </div>
@@ -1923,6 +1930,193 @@ function exportQuote() {
     XLSX.writeFile(wb, `報價單(${ctTag})_${safeName}_${today}.xlsx`);
     showToast('報價單已匯出');
     closeQuoteModal();
+}
+
+// ===== 後台：匯出 PDF 報價單（品牌色設計） =====
+
+function buildQuotePdfHtml(picks, customer) {
+    const d = new Date();
+    const today = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+    const validUntil = `${d.getFullYear()}.12.31`;
+
+    const rows = picks.map((p, i) => {
+        const bg = i % 2 === 0 ? '#FFFFFF' : '#F8FCE8';
+        return `
+        <tr style="background: ${bg};">
+            <td style="padding: 10px 8px; text-align: center; border-bottom: 1px solid #E5E7EB; font-weight: 600;">${i + 1}</td>
+            <td style="padding: 10px 8px; border-bottom: 1px solid #E5E7EB; font-weight: 500;">${escAttr(p.name || '')}</td>
+            <td style="padding: 10px 8px; border-bottom: 1px solid #E5E7EB; font-size: 12px; color: #555;">${escAttr(p.quantitySpec || '')}</td>
+            <td style="padding: 10px 8px; border-bottom: 1px solid #E5E7EB; font-size: 12px; color: #555;">${escAttr(p.unitContent || '')}</td>
+            <td style="padding: 10px 8px; border-bottom: 1px solid #E5E7EB; text-align: right; font-weight: 600; color: #1A1A16;">$${formatPrice(p.costPrice)}</td>
+            <td style="padding: 10px 8px; border-bottom: 1px solid #E5E7EB; text-align: right; color: #FFAA00; font-weight: 600;">$${formatPrice(p.retailPrice)}</td>
+            <td style="padding: 10px 8px; border-bottom: 1px solid #E5E7EB; font-size: 11px; color: #666;">${escAttr(p.storage || '')}</td>
+        </tr>`;
+    }).join('');
+
+    return `
+    <div style="width: 800px; padding: 36px 32px; background: white; font-family: 'Noto Sans TC', 'Microsoft JhengHei', sans-serif; color: #1A1A16; box-sizing: border-box;">
+
+        <!-- ===== Header（深底 + 螢光綠標題） ===== -->
+        <div style="display: flex; align-items: center; justify-content: space-between; gap: 16px; padding-bottom: 16px; border-bottom: 4px solid #C3F000; margin-bottom: 18px;">
+            <div style="display: flex; align-items: center; gap: 14px;">
+                <img src="logo.png" style="height: 56px; object-fit: contain;" crossorigin="anonymous">
+                <div>
+                    <div style="font-size: 20px; font-weight: bold; letter-spacing: 1px;">得來素企業有限公司</div>
+                    <div style="font-size: 11px; color: #888; letter-spacing: 0.5px;">DerLife Co., Ltd.　|　享受素系Der生活</div>
+                </div>
+            </div>
+            <div style="background: #1A1A16; color: #C3F000; padding: 14px 28px; border-radius: 10px; text-align: center;">
+                <div style="font-size: 26px; font-weight: bold; letter-spacing: 8px;">報 價 單</div>
+                <div style="font-size: 10px; color: #C3F000; letter-spacing: 2px; opacity: 0.8;">QUOTATION</div>
+            </div>
+        </div>
+
+        <!-- ===== 公司資訊條 ===== -->
+        <div style="background: #F8FCE8; border-left: 4px solid #C3F000; padding: 10px 14px; margin-bottom: 18px; font-size: 12px; line-height: 1.8; border-radius: 0 6px 6px 0;">
+            <div><span style="color: #888;">訂貨電話　</span>04-2522-0050　　<span style="color: #888;">傳真　</span>04-2522-0550　　<span style="color: #888;">電子信箱　</span>dlsveg@gmail.com</div>
+            <div><span style="color: #888;">業務聯絡人　</span>黃文弘　　<span style="color: #888;">手機　</span>0930-551-100</div>
+            <div><span style="color: #888;">聯絡地址　</span>420 台中市豐原區水源路 427 巷 32 號</div>
+        </div>
+
+        <!-- ===== 客戶資訊（黑底標籤 + 白底內容） ===== -->
+        <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px; font-size: 13px;">
+            <tr>
+                <td style="background: #1A1A16; color: white; padding: 8px 14px; width: 90px; font-weight: 500;">客戶名稱</td>
+                <td style="padding: 8px 14px; border: 1px solid #E5E7EB; font-weight: 600;">${escAttr(customer.name || '')}</td>
+                <td style="background: #1A1A16; color: white; padding: 8px 14px; width: 90px; font-weight: 500;">報價日期</td>
+                <td style="padding: 8px 14px; border: 1px solid #E5E7EB; width: 130px;">${today}</td>
+            </tr>
+            <tr>
+                <td style="background: #1A1A16; color: white; padding: 8px 14px; font-weight: 500;">聯絡人</td>
+                <td style="padding: 8px 14px; border: 1px solid #E5E7EB;">${escAttr(customer.contact || '')}</td>
+                <td style="background: #1A1A16; color: white; padding: 8px 14px; font-weight: 500;">電話</td>
+                <td style="padding: 8px 14px; border: 1px solid #E5E7EB;">${escAttr(customer.phone || '')}</td>
+            </tr>
+            <tr>
+                <td style="background: #1A1A16; color: white; padding: 8px 14px; font-weight: 500;">電子信箱</td>
+                <td style="padding: 8px 14px; border: 1px solid #E5E7EB;">${escAttr(customer.email || '')}</td>
+                <td style="background: #1A1A16; color: white; padding: 8px 14px; font-weight: 500;">手機 / 傳真</td>
+                <td style="padding: 8px 14px; border: 1px solid #E5E7EB;">${escAttr(customer.mobile || customer.fax || '')}</td>
+            </tr>
+            <tr>
+                <td style="background: #1A1A16; color: white; padding: 8px 14px; font-weight: 500;">聯絡地址</td>
+                <td style="padding: 8px 14px; border: 1px solid #E5E7EB;" colspan="3">${escAttr(customer.companyAddr || customer.invoiceAddr || '')}</td>
+            </tr>
+        </table>
+
+        <!-- ===== 產品明細表 ===== -->
+        <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px; font-size: 12px;">
+            <thead>
+                <tr style="background: #1A1A16; color: #C3F000;">
+                    <th style="padding: 12px 8px; text-align: center; font-weight: 600; width: 50px; letter-spacing: 1px;">序號</th>
+                    <th style="padding: 12px 8px; text-align: left; font-weight: 600; letter-spacing: 1px;">產品名稱</th>
+                    <th style="padding: 12px 8px; text-align: left; font-weight: 600; letter-spacing: 1px;">數量 / 規格</th>
+                    <th style="padding: 12px 8px; text-align: left; font-weight: 600; letter-spacing: 1px;">單位（內容物）</th>
+                    <th style="padding: 12px 8px; text-align: right; font-weight: 600; letter-spacing: 1px; width: 80px;">進貨價</th>
+                    <th style="padding: 12px 8px; text-align: right; font-weight: 600; letter-spacing: 1px; width: 80px; color: #FFAA00;">建議零售</th>
+                    <th style="padding: 12px 8px; text-align: left; font-weight: 600; letter-spacing: 1px; width: 110px;">保存方法</th>
+                </tr>
+            </thead>
+            <tbody>${rows}</tbody>
+        </table>
+
+        <!-- ===== 注意事項（橘色強調） ===== -->
+        <div style="background: #FFF7E0; border-left: 4px solid #FFAA00; padding: 12px 16px; font-size: 12px; line-height: 1.8; border-radius: 0 6px 6px 0; margin-bottom: 18px;">
+            <div style="font-weight: 700; color: #1A1A16; margin-bottom: 4px; letter-spacing: 1px;">📌 注意事項</div>
+            <ol style="margin: 0; padding-left: 20px; color: #555;">
+                <li>本報價單有效期限至 <span style="color: #1A1A16; font-weight: 600;">${validUntil}</span></li>
+                <li>此報價金額皆為<span style="color: #1A1A16; font-weight: 600;">含稅價</span></li>
+                <li>訂購需滿 <span style="color: #1A1A16; font-weight: 600;">$7,000</span> 即可享有此報價優惠價格（免運費）</li>
+            </ol>
+        </div>
+
+        <!-- ===== Footer ===== -->
+        <div style="text-align: center; color: #999; font-size: 10px; border-top: 1px solid #EEE; padding-top: 12px; letter-spacing: 1px;">
+            得來素企業有限公司　|　DerLife　|　www.dlsveg.com.tw　|　享受素系Der生活
+        </div>
+    </div>`;
+}
+
+async function exportQuotePDF() {
+    const list = getQuoteList();
+    const picks = [];
+    quoteRows.forEach((r, i) => { if (r.selected) picks.push(list[i]); });
+    if (picks.length === 0) {
+        showToast('請至少勾選一個產品', 'error');
+        return;
+    }
+    if (typeof html2canvas === 'undefined' || !window.jspdf) {
+        showToast('PDF 套件尚未載入，請稍候重試', 'error');
+        return;
+    }
+
+    const btn = document.getElementById('btn-export-pdf');
+    const origText = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '產生 PDF 中...';
+
+    const container = document.getElementById('pdf-render-area');
+    container.innerHTML = buildQuotePdfHtml(picks, quoteCustomer);
+
+    try {
+        // 等 logo 圖片載入
+        const imgs = container.querySelectorAll('img');
+        await Promise.all(Array.from(imgs).map(img =>
+            img.complete && img.naturalWidth > 0
+                ? Promise.resolve()
+                : new Promise(r => { img.onload = r; img.onerror = r; setTimeout(r, 2000); })
+        ));
+
+        const canvas = await html2canvas(container.firstElementChild, {
+            scale: 2,
+            useCORS: true,
+            backgroundColor: '#ffffff',
+            logging: false
+        });
+
+        const imgData = canvas.toDataURL('image/png');
+        const { jsPDF } = window.jspdf;
+        const pdf = new jsPDF('p', 'mm', 'a4');
+        const pdfWidth = 210;
+        const pdfHeight = 297;
+        const margin = 8;
+        const usableWidth = pdfWidth - margin * 2;
+        const usableHeight = pdfHeight - margin * 2;
+
+        const imgRatio = canvas.height / canvas.width;
+        const fullImgHeight = usableWidth * imgRatio;
+
+        if (fullImgHeight <= usableHeight) {
+            // 單頁裝得下
+            pdf.addImage(imgData, 'PNG', margin, margin, usableWidth, fullImgHeight);
+        } else {
+            // 分頁：用負偏移逐頁加入（jsPDF 會自動裁切超出頁面的部分）
+            let yOffset = 0;
+            let pages = 0;
+            while (yOffset < fullImgHeight) {
+                pdf.addImage(imgData, 'PNG', margin, margin - yOffset, usableWidth, fullImgHeight);
+                yOffset += usableHeight;
+                pages++;
+                if (yOffset < fullImgHeight) pdf.addPage();
+                if (pages > 20) break;  // 安全閥
+            }
+        }
+
+        const d = new Date();
+        const today = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+        const safeName = (quoteCustomer.name || '客戶').replace(/[\\/:*?"<>|]/g, '');
+        const ctTag = (quoteCustomer.customerType || '').replace(/\//g, '');
+        pdf.save(`報價單(${ctTag})_${safeName}_${today}.pdf`);
+        showToast('PDF 已匯出');
+        closeQuoteModal();
+    } catch (err) {
+        console.error(err);
+        showToast('PDF 匯出失敗：' + err.message, 'error');
+    } finally {
+        container.innerHTML = '';
+        btn.disabled = false;
+        btn.innerHTML = origText;
+    }
 }
 </script>
 
