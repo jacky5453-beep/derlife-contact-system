@@ -689,9 +689,10 @@ function startForm(type) {
     document.getElementById('lbl-name').textContent = isSupplier ? '廠商名稱 *' : '客戶名稱 *';
     document.getElementById('lbl-short').textContent = isSupplier ? '廠商簡稱' : '客戶簡稱';
     document.getElementById('data-form').reset();
-    // 重置統編輸入框狀態
+    // 重置統編輸入框狀態（reset 後預設 'has'，套用 required + placeholder）
+    const taxIdType = document.getElementById('taxIdType');
     const taxInput = document.getElementById('taxIdInput');
-    taxInput.disabled = false;
+    applyTaxIdTypeChange(taxIdType, taxInput);
     // 客戶類型欄位：客戶才顯示且必填
     const ctWrap = document.getElementById('customer-type-wrap');
     const ctSelect = document.getElementById('customerType');
@@ -779,36 +780,32 @@ function updateFrontProductsCount() {
     if (el) el.textContent = `已選 ${frontSelectedProductIds.size} 項`;
 }
 
-// ===== 統編類型切換（前台新增表單）=====
+// ===== 統編類型切換（前台 / 後台共用） =====
+function applyTaxIdTypeChange(typeEl, inputEl) {
+    if (typeEl.value === 'has') {
+        inputEl.disabled = false;
+        inputEl.required = true;
+        inputEl.placeholder = '8碼數字';
+    } else {
+        inputEl.disabled = true;
+        inputEl.required = false;
+        inputEl.value = '';
+        inputEl.placeholder = typeEl.value === 'none' ? '無統編' : '無需統編';
+    }
+}
+
 document.addEventListener('DOMContentLoaded', function() {
     const taxIdType = document.getElementById('taxIdType');
     const taxIdInput = document.getElementById('taxIdInput');
     if (taxIdType && taxIdInput) {
-        taxIdType.addEventListener('change', function() {
-            if (this.value === 'has') {
-                taxIdInput.disabled = false;
-                taxIdInput.placeholder = '8碼數字';
-            } else {
-                taxIdInput.disabled = true;
-                taxIdInput.value = '';
-                taxIdInput.placeholder = this.value === 'none' ? '無統編' : '無需統編';
-            }
-        });
+        taxIdType.addEventListener('change', () => applyTaxIdTypeChange(taxIdType, taxIdInput));
+        applyTaxIdTypeChange(taxIdType, taxIdInput); // 初始套用
     }
     // 編輯 modal 的統編切換
     const editTaxIdType = document.getElementById('edit-taxIdType');
     const editTaxIdInput = document.getElementById('edit-taxId');
     if (editTaxIdType && editTaxIdInput) {
-        editTaxIdType.addEventListener('change', function() {
-            if (this.value === 'has') {
-                editTaxIdInput.disabled = false;
-                editTaxIdInput.placeholder = '8碼數字';
-            } else {
-                editTaxIdInput.disabled = true;
-                editTaxIdInput.value = '';
-                editTaxIdInput.placeholder = this.value === 'none' ? '無統編' : '無需統編';
-            }
-        });
+        editTaxIdType.addEventListener('change', () => applyTaxIdTypeChange(editTaxIdType, editTaxIdInput));
     }
 });
 
@@ -1162,17 +1159,14 @@ function openEditModal(docId) {
     const editTaxIdInput = document.getElementById('edit-taxId');
     if (item.taxId === '無統編') {
         editTaxIdType.value = 'none';
-        editTaxIdInput.value = '';
-        editTaxIdInput.disabled = true;
     } else if (item.taxId === '無需統編') {
         editTaxIdType.value = 'notNeeded';
-        editTaxIdInput.value = '';
-        editTaxIdInput.disabled = true;
     } else {
         editTaxIdType.value = 'has';
         editTaxIdInput.value = item.taxId || '';
-        editTaxIdInput.disabled = false;
     }
+    applyTaxIdTypeChange(editTaxIdType, editTaxIdInput);
+    if (editTaxIdType.value === 'has') editTaxIdInput.value = item.taxId || '';
     document.getElementById('edit-zipCode').value = item.zipCode || '';
     document.getElementById('edit-contact').value = item.contact || '';
     document.getElementById('edit-invoiceAddr').value = item.invoiceAddr || '';
