@@ -133,7 +133,7 @@
                     <!-- 客戶類型（僅客戶顯示） -->
                     <div class="sm:col-span-2 hidden" id="customer-type-wrap">
                         <label class="block text-sm font-medium text-gray-700 mb-1">客戶類型 *</label>
-                        <select name="customerType" id="customerType" class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-brand focus:border-brand outline-none">
+                        <select name="customerType" id="customerType" class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-brand focus:border-brand outline-none" onchange="onCustomerTypeChange()">
                             <option value="">請選擇</option>
                             <option value="團購">團購</option>
                             <option value="經銷/批發">經銷/批發</option>
@@ -141,6 +141,17 @@
                             <option value="實體店面銷售">實體店面銷售（素料店/素食超市）</option>
                             <option value="貿易商">貿易商</option>
                         </select>
+                    </div>
+                    <!-- 產品選擇區（依客戶類型動態載入；客戶填表才顯示）-->
+                    <div class="sm:col-span-2 hidden" id="customer-products-wrap">
+                        <div class="flex items-center justify-between mb-2">
+                            <label class="block text-sm font-medium text-gray-700">想詢價的產品（可勾選多項，非必填）</label>
+                            <span id="customer-products-count" class="text-xs text-gray-400">已選 0 項</span>
+                        </div>
+                        <div id="customer-products-loading" class="hidden text-center py-6 text-gray-400 text-sm">載入產品中…</div>
+                        <div id="customer-products-empty" class="hidden text-center py-6 text-gray-400 text-sm bg-gray-50 rounded-lg">此客戶類型尚未建立產品報價</div>
+                        <div id="customer-products-list" class="border border-gray-200 rounded-lg max-h-72 overflow-y-auto"></div>
+                        <p class="text-xs text-gray-400 mt-1">提交後會自動帶入後台報價系統，方便我們快速為您準備報價單。</p>
                     </div>
                     <!-- 簡稱 -->
                     <div>
@@ -668,6 +679,9 @@ function showToast(msg, type = 'success') {
 }
 
 // ===== 前台：開始填表 =====
+let frontProductCache = {}; // { customerType: [products] }
+let frontSelectedProductIds = new Set();
+
 function startForm(type) {
     currentFormType = type;
     const isSupplier = type === 'supplier';
@@ -681,14 +695,92 @@ function startForm(type) {
     // 客戶類型欄位：客戶才顯示且必填
     const ctWrap = document.getElementById('customer-type-wrap');
     const ctSelect = document.getElementById('customerType');
+    const productsWrap = document.getElementById('customer-products-wrap');
+    frontSelectedProductIds.clear();
     if (isSupplier) {
         ctWrap.classList.add('hidden');
         ctSelect.required = false;
+        productsWrap.classList.add('hidden');
     } else {
         ctWrap.classList.remove('hidden');
         ctSelect.required = true;
+        productsWrap.classList.add('hidden'); // 等選了客戶類型才顯示
     }
     navigateTo('form');
+}
+
+async function onCustomerTypeChange() {
+    const ct = document.getElementById('customerType').value;
+    const wrap = document.getElementById('customer-products-wrap');
+    const loading = document.getElementById('customer-products-loading');
+    const empty = document.getElementById('customer-products-empty');
+    const list = document.getElementById('customer-products-list');
+    frontSelectedProductIds.clear();
+    updateFrontProductsCount();
+    if (!ct) {
+        wrap.classList.add('hidden');
+        return;
+    }
+    wrap.classList.remove('hidden');
+    list.innerHTML = '';
+    empty.classList.add('hidden');
+
+    try {
+        let products = frontProductCache[ct];
+        if (!products) {
+            loading.classList.remove('hidden');
+            const snap = await db.collection(COLLECTIONS.product).where('customerType', '==', ct).get();
+            products = [];
+            snap.forEach(doc => products.push({ id: doc.id, ...doc.data() }));
+            // 兼容舊欄位
+            products.forEach(p => {
+                if (p.spec && !p.quantitySpec) p.quantitySpec = p.spec;
+                if (p.unit && !p.unitContent) p.unitContent = p.unit;
+                if ((p.price || p.price === 0) && p.costPrice === undefined) p.costPrice = p.price;
+            });
+            // 依產品名稱排序
+            products.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+            frontProductCache[ct] = products;
+            loading.classList.add('hidden');
+        }
+        if (products.length === 0) {
+            empty.classList.remove('hidden');
+            return;
+        }
+        list.innerHTML = products.map(p => `
+            <label class="flex items-start gap-3 px-3 py-2 border-b border-gray-100 hover:bg-brand/10 cursor-pointer">
+                <input type="checkbox" class="custom-checkbox mt-1" value="${p.id}" onchange="onFrontProductToggle(this)">
+                <div class="flex-1 min-w-0">
+                    <div class="font-medium text-sm text-brand-dark">${escAttr(p.name || '')}</div>
+                    <div class="text-xs text-gray-500 mt-0.5">
+                        ${p.quantitySpec ? `<span class="mr-2">📦 ${escAttr(p.quantitySpec)}</span>` : ''}
+                        ${p.unitContent ? `<span class="mr-2">⚖️ ${escAttr(p.unitContent)}</span>` : ''}
+                        ${p.storage ? `<span class="mr-2">🌡 ${escAttr(p.storage)}</span>` : ''}
+                    </div>
+                </div>
+                <div class="text-right text-xs whitespace-nowrap">
+                    <div class="font-mono text-brand-dark">進 $${formatPrice(p.costPrice)}</div>
+                    ${p.retailPrice ? `<div class="font-mono text-orange-500">建議 $${formatPrice(p.retailPrice)}</div>` : ''}
+                </div>
+            </label>
+        `).join('');
+    } catch (err) {
+        console.error(err);
+        loading.classList.add('hidden');
+        empty.classList.remove('hidden');
+        empty.textContent = '產品載入失敗，請稍後再試';
+    }
+}
+
+function onFrontProductToggle(cb) {
+    if (cb.checked) frontSelectedProductIds.add(cb.value);
+    else frontSelectedProductIds.delete(cb.value);
+    updateFrontProductsCount();
+}
+
+function updateFrontProductsCount() {
+    const el = document.getElementById('customer-products-count');
+    if (el) el.textContent = `已選 ${frontSelectedProductIds.size} 項`;
 }
 
 // ===== 統編類型切換（前台新增表單）=====
@@ -737,6 +829,7 @@ async function submitForm(e) {
             type: currentFormType,
             customId: '', // 編號由後台手動填
             customerType: currentFormType === 'customer' ? (form.customerType.value || '') : '',
+            selectedProducts: currentFormType === 'customer' ? Array.from(frontSelectedProductIds) : [],
             name: form.name.value.trim(),
             shortName: form.shortName.value.trim(),
             taxId: form.taxIdType.value === 'none' ? '無統編'
@@ -955,8 +1048,12 @@ function renderTable(data) {
     tbody.innerHTML = data.map(item => {
         const time = item.createdAt ? new Date(item.createdAt.seconds * 1000).toLocaleString('zh-TW') : '-';
         const checked = selectedIds.has(item.id) ? 'checked' : '';
+        const selectedCount = (item.selectedProducts && item.selectedProducts.length) || 0;
         const ctCell = isCustomer
-            ? `<td class="p-3"><span class="inline-block px-2 py-0.5 rounded text-xs ${item.customerType ? 'bg-orange-100 text-orange-700' : 'bg-gray-100 text-gray-400'}">${escHtml(item.customerType || '未分類')}</span></td>`
+            ? `<td class="p-3">
+                <span class="inline-block px-2 py-0.5 rounded text-xs ${item.customerType ? 'bg-orange-100 text-orange-700' : 'bg-gray-100 text-gray-400'}">${escHtml(item.customerType || '未分類')}</span>
+                ${selectedCount > 0 ? `<span class="ml-1 inline-block px-2 py-0.5 rounded text-xs bg-brand/30 text-brand-dark" title="客戶提交時勾選了 ${selectedCount} 項產品">📋 ${selectedCount}</span>` : ''}
+            </td>`
             : '';
         const quoteBtn = (isCustomer && isManagerOrAbove())
             ? `<button onclick="openQuoteFromRow('${item.id}')" class="text-orange-500 hover:text-orange-700 text-sm font-medium ml-2">報價</button>`
@@ -1855,7 +1952,9 @@ function renderQuoteModal() {
     const ta = document.getElementById('quote-notes');
     if (ta && !ta.value.trim()) ta.value = getDefaultQuoteNotes();
     const list = getQuoteList();
-    quoteRows = list.map(p => ({ productId: p._id, selected: false }));
+    // 預先勾選客戶當初提交時選的產品（用 doc id 比對）
+    const preSelected = new Set(quoteCustomer.selectedProducts || []);
+    quoteRows = list.map(p => ({ productId: p._id, selected: preSelected.has(p._id) }));
     const tbody = document.getElementById('quote-product-tbody');
     const empty = document.getElementById('quote-empty');
     if (list.length === 0) {
@@ -1863,16 +1962,25 @@ function renderQuoteModal() {
         empty.classList.remove('hidden');
     } else {
         empty.classList.add('hidden');
-        tbody.innerHTML = list.map((p, i) => `<tr class="border-b border-gray-100">
-            <td class="p-2"><input type="checkbox" class="custom-checkbox" data-idx="${i}" onchange="onQuoteRowChange(${i}, this.checked)"></td>
-            <td class="p-2 font-mono text-xs">${escHtml(p.code || '')}</td>
-            <td class="p-2">${escHtml(p.name || '')}</td>
-            <td class="p-2 text-xs">${escHtml(p.quantitySpec || '')}</td>
-            <td class="p-2 text-xs">${escHtml(p.unitContent || '')}</td>
-            <td class="p-2 text-right font-mono">${formatPrice(p.costPrice)}</td>
-            <td class="p-2 text-right font-mono">${formatPrice(p.retailPrice)}</td>
-            <td class="p-2 text-xs">${escHtml(p.storage || '')}</td>
-        </tr>`).join('');
+        tbody.innerHTML = list.map((p, i) => {
+            const checked = quoteRows[i] && quoteRows[i].selected ? 'checked' : '';
+            const rowBg = checked ? 'bg-brand/10' : '';
+            return `<tr class="border-b border-gray-100 ${rowBg}">
+                <td class="p-2"><input type="checkbox" class="custom-checkbox" data-idx="${i}" ${checked} onchange="onQuoteRowChange(${i}, this.checked)"></td>
+                <td class="p-2 font-mono text-xs">${escHtml(p.code || '')}</td>
+                <td class="p-2">${escHtml(p.name || '')}</td>
+                <td class="p-2 text-xs">${escHtml(p.quantitySpec || '')}</td>
+                <td class="p-2 text-xs">${escHtml(p.unitContent || '')}</td>
+                <td class="p-2 text-right font-mono">${formatPrice(p.costPrice)}</td>
+                <td class="p-2 text-right font-mono">${formatPrice(p.retailPrice)}</td>
+                <td class="p-2 text-xs">${escHtml(p.storage || '')}</td>
+            </tr>`;
+        }).join('');
+        // 若有預先勾選，提示使用者
+        const preCount = quoteRows.filter(r => r.selected).length;
+        if (preCount > 0) {
+            showToast(`已自動帶入客戶當初勾選的 ${preCount} 項產品`);
+        }
     }
     document.getElementById('quote-select-all').checked = false;
     updateQuoteCount();
