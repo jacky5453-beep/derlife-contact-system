@@ -329,10 +329,10 @@
             </div>
         </div>
 
-        <!-- 產品報價管理 -->
+        <!-- 產品報價管理（類 Excel 多筆同時編輯） -->
         <div id="admin-product" class="bg-white rounded-2xl shadow-md p-4 sm:p-6 hidden">
-            <div class="flex flex-col sm:flex-row gap-3 mb-4 items-start sm:items-center justify-between">
-                <div class="flex items-center gap-2 flex-1 w-full sm:w-auto">
+            <div class="flex flex-col sm:flex-row gap-3 mb-3 items-start sm:items-center justify-between">
+                <div class="flex items-center gap-2 flex-wrap flex-1 w-full sm:w-auto">
                     <select id="product-filter-type" onchange="renderProductTable()" class="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-brand focus:border-brand outline-none">
                         <option value="">全部客戶類型</option>
                         <option value="團購">團購</option>
@@ -341,52 +341,76 @@
                         <option value="實體店面銷售">實體店面銷售</option>
                         <option value="貿易商">貿易商</option>
                     </select>
-                    <input type="search" id="product-search" placeholder="搜尋產品..." oninput="renderProductTable()"
-                        class="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-brand focus:border-brand outline-none">
+                    <input type="search" id="product-search" placeholder="搜尋產品名稱、編號..." oninput="renderProductTable()"
+                        class="flex-1 min-w-[180px] border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-brand focus:border-brand outline-none">
                     <span id="product-count" class="text-sm text-gray-400 whitespace-nowrap"></span>
                 </div>
                 <div class="flex gap-2 flex-wrap">
-                    <button onclick="openProductModal()" class="px-4 py-2 rounded-lg text-sm font-medium text-brand-dark" style="background: #C3F000;">
-                        + 新增產品
+                    <button onclick="addBlankProductRow()" class="px-3 py-2 rounded-lg text-sm font-medium text-brand-dark" style="background: #C3F000;">
+                        + 新增空白列
                     </button>
-                    <label class="px-4 py-2 rounded-lg text-sm font-medium text-white cursor-pointer" style="background: #1A1A16;">
+                    <button onclick="addBlankProductRows(10)" class="px-3 py-2 rounded-lg text-sm font-medium text-brand-dark border border-gray-300 hover:bg-gray-50">
+                        + 一次加 10 列
+                    </button>
+                    <label class="px-3 py-2 rounded-lg text-sm font-medium text-white cursor-pointer" style="background: #1A1A16;">
                         匯入 Excel
                         <input type="file" accept=".xlsx,.xls,.csv" class="hidden" onchange="importProducts(event)">
                     </label>
-                    <button onclick="downloadProductTemplate()" class="px-4 py-2 rounded-lg text-sm font-medium text-brand-dark border border-gray-300 hover:bg-gray-50">
+                    <button onclick="downloadProductTemplate()" class="px-3 py-2 rounded-lg text-sm font-medium text-brand-dark border border-gray-300 hover:bg-gray-50">
                         下載匯入範本
                     </button>
                 </div>
             </div>
-            <div class="overflow-x-auto">
-                <table class="data-table w-full text-sm">
+            <!-- 變更狀態列 -->
+            <div id="product-dirty-bar" class="hidden mb-3 flex flex-wrap items-center justify-between gap-2 bg-yellow-50 border border-yellow-200 text-yellow-800 px-4 py-2 rounded-lg text-sm">
+                <span id="product-dirty-msg">尚未儲存的變更</span>
+                <div class="flex gap-2">
+                    <button onclick="discardProductChanges()" class="px-3 py-1.5 rounded text-sm font-medium border border-yellow-400 text-yellow-800 hover:bg-yellow-100">取消變更</button>
+                    <button onclick="saveAllProducts()" class="px-4 py-1.5 rounded text-sm font-bold text-brand-dark" style="background: #C3F000;">儲存全部變更</button>
+                </div>
+            </div>
+            <div class="overflow-x-auto border border-gray-200 rounded-lg">
+                <table class="w-full text-sm" style="min-width: 1300px;">
                     <thead>
                         <tr class="bg-brand-dark text-white text-left">
-                            <th class="p-3 rounded-tl-lg">客戶類型</th>
-                            <th class="p-3">產品編號</th>
-                            <th class="p-3">產品名稱</th>
-                            <th class="p-3">規格</th>
-                            <th class="p-3">單位</th>
-                            <th class="p-3 text-right">報價</th>
-                            <th class="p-3">備註</th>
-                            <th class="p-3 rounded-tr-lg">操作</th>
+                            <th class="p-2 sticky top-0 bg-brand-dark" style="min-width: 130px;">客戶類型</th>
+                            <th class="p-2" style="min-width: 100px;">產品編號</th>
+                            <th class="p-2" style="min-width: 220px;">產品名稱</th>
+                            <th class="p-2" style="min-width: 180px;">數量/規格</th>
+                            <th class="p-2" style="min-width: 160px;">單位(內容物)</th>
+                            <th class="p-2 text-right" style="min-width: 100px;">進貨價</th>
+                            <th class="p-2 text-right" style="min-width: 110px;">建議末端售價</th>
+                            <th class="p-2" style="min-width: 160px;">保存方法(效期)</th>
+                            <th class="p-2" style="min-width: 160px;">備註</th>
+                            <th class="p-2 text-center" style="min-width: 60px;">刪</th>
                         </tr>
                     </thead>
                     <tbody id="product-tbody"></tbody>
                 </table>
             </div>
             <div id="product-empty" class="hidden text-center py-12 text-gray-400">
-                <p>尚未建立產品，請新增或匯入</p>
+                <p>尚未建立產品，請點「+ 新增空白列」或匯入 Excel</p>
             </div>
+            <p class="text-xs text-gray-400 mt-3">提示：在欄位內直接編輯文字／數字，最後再點上方「儲存全部變更」一次寫入。Tab 可跳到下一欄。</p>
         </div>
 
         <!-- 帳號權限管理 -->
         <div id="admin-whitelist" class="bg-white rounded-2xl shadow-md p-4 sm:p-6 hidden">
-            <h3 class="text-lg font-bold text-brand-dark mb-4">後台帳號白名單</h3>
-            <p class="text-sm text-gray-500 mb-4">只有白名單中的 Google 帳號可以登入後台管理。</p>
-            <div class="flex gap-2 mb-4">
+            <h3 class="text-lg font-bold text-brand-dark mb-1">後台帳號白名單</h3>
+            <p class="text-sm text-gray-500 mb-2">只有白名單中的 Google 帳號可以登入後台管理。</p>
+            <div class="bg-gray-50 rounded-lg p-3 mb-4 text-xs text-gray-600 leading-relaxed">
+                <p class="mb-1"><span class="inline-block px-2 py-0.5 rounded bg-brand/30 text-brand-dark font-medium">admin</span> 全部功能 + 帳號權限管理（可新增/刪除任何人、可指派 admin）</p>
+                <p class="mb-1"><span class="inline-block px-2 py-0.5 rounded bg-orange-100 text-orange-700 font-medium">manager</span> 全部功能 + 帳號權限管理（不可指派/移除 admin）</p>
+                <p><span class="inline-block px-2 py-0.5 rounded bg-gray-200 text-gray-600 font-medium">user</span> 只能管廠商/客戶資料，看不到產品報價</p>
+            </div>
+            <div class="flex flex-col sm:flex-row gap-2 mb-4">
                 <input type="email" id="new-email" placeholder="輸入 Google 帳號 Email"
                     class="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-brand focus:border-brand outline-none">
+                <select id="new-role" class="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-brand focus:border-brand outline-none">
+                    <option value="user">user（一般人員）</option>
+                    <option value="manager">manager（主管）</option>
+                    <option value="admin">admin（管理員）</option>
+                </select>
                 <button onclick="addWhitelist()" class="px-4 py-2 rounded-lg text-sm font-medium text-brand-dark" style="background: #C3F000;">
                     新增
                 </button>
@@ -503,64 +527,6 @@
     </div>
 </div>
 
-<!-- ===== 產品新增/編輯彈窗 ===== -->
-<div id="modal-product" class="fixed inset-0 z-50 hidden">
-    <div class="absolute inset-0 bg-black/40" onclick="closeProductModal()"></div>
-    <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-white rounded-2xl shadow-2xl w-full max-w-xl max-h-[90vh] overflow-y-auto p-6">
-        <div class="flex items-center justify-between mb-4">
-            <h3 id="product-modal-title" class="text-xl font-bold text-brand-dark">新增產品</h3>
-            <button onclick="closeProductModal()" class="text-gray-400 hover:text-gray-600">
-                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
-            </button>
-        </div>
-        <form id="product-form" onsubmit="saveProduct(event)">
-            <input type="hidden" id="product-doc-id">
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div class="sm:col-span-2">
-                    <label class="block text-sm font-medium text-gray-700 mb-1">客戶類型 *</label>
-                    <select id="product-customerType" required class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-brand focus:border-brand outline-none">
-                        <option value="">請選擇</option>
-                        <option value="團購">團購</option>
-                        <option value="經銷/批發">經銷/批發</option>
-                        <option value="餐廳">餐廳（餐飲進貨）</option>
-                        <option value="實體店面銷售">實體店面銷售（素料店/素食超市）</option>
-                        <option value="貿易商">貿易商</option>
-                    </select>
-                </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">產品編號</label>
-                    <input id="product-code" type="text" class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-brand focus:border-brand outline-none">
-                </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">產品名稱 *</label>
-                    <input id="product-name" type="text" required class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-brand focus:border-brand outline-none">
-                </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">規格</label>
-                    <input id="product-spec" type="text" placeholder="例：1kg / 包" class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-brand focus:border-brand outline-none">
-                </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">單位</label>
-                    <input id="product-unit" type="text" placeholder="例：包/箱/件" class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-brand focus:border-brand outline-none">
-                </div>
-                <div class="sm:col-span-2">
-                    <label class="block text-sm font-medium text-gray-700 mb-1">報價（單價）*</label>
-                    <input id="product-price" type="number" min="0" step="0.01" required class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-brand focus:border-brand outline-none">
-                </div>
-                <div class="sm:col-span-2">
-                    <label class="block text-sm font-medium text-gray-700 mb-1">備註</label>
-                    <textarea id="product-note" rows="2" class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-brand focus:border-brand outline-none"></textarea>
-                </div>
-            </div>
-            <div class="mt-6 flex justify-end gap-3">
-                <button type="button" id="product-btn-delete" onclick="deleteProduct()" class="hidden px-4 py-2 rounded-lg text-sm font-medium text-red-600 border border-red-300 hover:bg-red-50">刪除</button>
-                <button type="button" onclick="closeProductModal()" class="px-4 py-2 rounded-lg text-sm font-medium border border-gray-300 text-gray-600 hover:bg-gray-50">取消</button>
-                <button type="submit" class="px-6 py-2 rounded-lg text-sm font-bold text-brand-dark" style="background: #C3F000;">儲存</button>
-            </div>
-        </form>
-    </div>
-</div>
-
 <!-- ===== 產生報價單彈窗 ===== -->
 <div id="modal-quote" class="fixed inset-0 z-50 hidden">
     <div class="absolute inset-0 bg-black/40" onclick="closeQuoteModal()"></div>
@@ -585,17 +551,17 @@
             </div>
         </div>
         <div class="overflow-x-auto max-h-[50vh] border border-gray-200 rounded-lg">
-            <table class="w-full text-sm">
+            <table class="w-full text-sm" style="min-width: 900px;">
                 <thead class="bg-gray-100 text-left sticky top-0">
                     <tr>
                         <th class="p-2 w-10"></th>
                         <th class="p-2">產品編號</th>
                         <th class="p-2">產品名稱</th>
-                        <th class="p-2">規格</th>
-                        <th class="p-2">單位</th>
-                        <th class="p-2 text-right">單價</th>
-                        <th class="p-2 w-24 text-right">數量</th>
-                        <th class="p-2 text-right">小計</th>
+                        <th class="p-2">數量/規格</th>
+                        <th class="p-2">單位(內容物)</th>
+                        <th class="p-2 text-right">進貨價</th>
+                        <th class="p-2 text-right">建議末端售價</th>
+                        <th class="p-2">保存方法(效期)</th>
                     </tr>
                 </thead>
                 <tbody id="quote-product-tbody"></tbody>
@@ -603,7 +569,7 @@
         </div>
         <div id="quote-empty" class="hidden text-center py-6 text-gray-400 text-sm">此客戶類型尚未建立任何產品報價</div>
         <div class="mt-4 text-right">
-            <p class="text-sm text-gray-500">勾選 <span id="quote-selected-count" class="font-bold text-brand-dark">0</span> 項，總計 <span id="quote-total" class="font-bold text-brand-dark">0</span> 元</p>
+            <p class="text-sm text-gray-500">已勾選 <span id="quote-selected-count" class="font-bold text-brand-dark">0</span> 項商品</p>
         </div>
         <div class="mt-6 flex justify-end gap-3">
             <button type="button" onclick="closeQuoteModal()" class="px-4 py-2 rounded-lg text-sm font-medium border border-gray-300 text-gray-600 hover:bg-gray-50">取消</button>
@@ -636,10 +602,15 @@ const provider = new firebase.auth.GoogleAuthProvider();
 
 // ===== 全域狀態 =====
 let currentUser = null;
+let currentUserRole = null; // 'admin' | 'manager' | 'user' | null
 let currentFormType = ''; // 'supplier' or 'customer'
 let currentAdminTab = 'supplier';
 let allData = []; // 當前分頁的資料
 let selectedIds = new Set();
+
+// 角色判斷工具
+function isAdmin() { return currentUserRole === 'admin'; }
+function isManagerOrAbove() { return currentUserRole === 'admin' || currentUserRole === 'manager'; }
 
 // Firestore collection 名稱
 const COLLECTIONS = {
@@ -810,7 +781,9 @@ auth.getRedirectResult().then(async (result) => {
             return;
         }
         currentUser = result.user;
+        currentUserRole = doc.data().role || 'user';
         updateUserUI();
+        applyRoleVisibility();
         navigateTo('admin');
         loadAdminData();
         showToast('登入成功');
@@ -819,14 +792,6 @@ auth.getRedirectResult().then(async (result) => {
         showToast('登入失敗', 'error');
     }
 }).catch(err => console.error(err));
-
-function logout() {
-    auth.signOut();
-    currentUser = null;
-    updateUserUI();
-    navigateTo('home');
-    showToast('已登出');
-}
 
 function updateUserUI() {
     const info = document.getElementById('user-info');
@@ -847,15 +812,45 @@ auth.onAuthStateChanged(async (user) => {
         const whitelistDoc = await db.collection(COLLECTIONS.whitelist).doc(user.email).get();
         if (whitelistDoc.exists) {
             currentUser = user;
+            currentUserRole = whitelistDoc.data().role || 'user';
         } else {
             currentUser = null;
+            currentUserRole = null;
         }
         updateUserUI();
+        applyRoleVisibility();
     } else {
         currentUser = null;
+        currentUserRole = null;
         updateUserUI();
+        applyRoleVisibility();
     }
 });
+
+// ===== 依角色控制 UI 可見性 =====
+function applyRoleVisibility() {
+    // 產品報價分頁：admin / manager 可見
+    const tabProduct = document.getElementById('tab-product');
+    if (tabProduct) tabProduct.classList.toggle('hidden', !isManagerOrAbove());
+    // 帳號權限管理分頁：admin / manager 可見（manager 不能設別人為 admin）
+    const tabWhitelist = document.getElementById('tab-whitelist');
+    if (tabWhitelist) tabWhitelist.classList.toggle('hidden', !isManagerOrAbove());
+    // 若當前在沒權限的分頁，自動跳回廠商
+    if ((currentAdminTab === 'product' && !isManagerOrAbove())
+        || (currentAdminTab === 'whitelist' && !isManagerOrAbove())) {
+        switchAdminTab('supplier');
+    }
+}
+
+function logout() {
+    auth.signOut();
+    currentUser = null;
+    currentUserRole = null;
+    updateUserUI();
+    applyRoleVisibility();
+    navigateTo('home');
+    showToast('已登出');
+}
 
 // ===== 後台：分頁切換 =====
 function switchAdminTab(tab) {
@@ -937,7 +932,7 @@ function renderTable(data) {
         const ctCell = isCustomer
             ? `<td class="p-3"><span class="inline-block px-2 py-0.5 rounded text-xs ${item.customerType ? 'bg-orange-100 text-orange-700' : 'bg-gray-100 text-gray-400'}">${escHtml(item.customerType || '未分類')}</span></td>`
             : '';
-        const quoteBtn = isCustomer
+        const quoteBtn = (isCustomer && isManagerOrAbove())
             ? `<button onclick="openQuoteFromRow('${item.id}')" class="text-orange-500 hover:text-orange-700 text-sm font-medium ml-2">報價</button>`
             : '';
         return `<tr class="border-b border-gray-100">
@@ -1039,7 +1034,8 @@ function openEditModal(docId) {
         quoteBtn.classList.add('hidden');
     } else {
         ctWrap.classList.remove('hidden');
-        quoteBtn.classList.remove('hidden');
+        // 「產生報價單」按鈕只給 admin / manager
+        quoteBtn.classList.toggle('hidden', !isManagerOrAbove());
         document.getElementById('edit-customerType').value = item.customerType || '';
     }
     // 統一編號：判斷是否為「無統編／無需統編」
@@ -1287,6 +1283,12 @@ function exportFormat(format) {
 }
 
 // ===== 後台：白名單管理 =====
+const ROLE_BADGE = {
+    admin: '<span class="text-xs bg-brand/30 text-brand-dark px-2 py-0.5 rounded font-medium">admin</span>',
+    manager: '<span class="text-xs bg-orange-100 text-orange-700 px-2 py-0.5 rounded font-medium">manager</span>',
+    user: '<span class="text-xs bg-gray-200 text-gray-600 px-2 py-0.5 rounded font-medium">user</span>'
+};
+
 async function loadWhitelist() {
     try {
         const snapshot = await db.collection(COLLECTIONS.whitelist).get();
@@ -1296,17 +1298,45 @@ async function loadWhitelist() {
             return;
         }
         list.innerHTML = '';
-        snapshot.forEach(doc => {
-            const email = doc.id;
-            const data = doc.data();
+        // 排序：admin > manager > user，相同時依 email
+        const items = [];
+        snapshot.forEach(doc => items.push({ email: doc.id, ...doc.data() }));
+        const order = { admin: 0, manager: 1, user: 2 };
+        items.sort((a, b) => (order[a.role || 'user'] - order[b.role || 'user']) || a.email.localeCompare(b.email));
+
+        items.forEach(item => {
+            const email = item.email;
+            const role = item.role || 'user';
+            const isSelf = email === currentUser.email;
+            const targetIsAdmin = role === 'admin';
+
+            // 角色下拉的選項：manager 不能改別人為 admin，也不能把現有 admin 降級
+            // admin 才能完整修改任意角色
+            const canChangeRole = isAdmin() || (!targetIsAdmin && !isSelf);
+            const roleSelectDisabled = !canChangeRole ? 'disabled' : '';
+            const adminOptionAttr = isAdmin() ? '' : 'disabled';
+            // 刪除規則：admin 可刪任何人（除自己）；manager 不可刪 admin、不可刪自己
+            const canDelete = !isSelf && (isAdmin() || !targetIsAdmin);
+
             const div = document.createElement('div');
-            div.className = 'flex items-center justify-between bg-gray-50 rounded-lg px-4 py-3';
+            div.className = 'flex flex-wrap items-center justify-between bg-gray-50 rounded-lg px-4 py-3 gap-2';
             div.innerHTML = `
-                <div>
+                <div class="flex items-center gap-2 flex-wrap">
                     <span class="font-medium text-brand-dark">${escHtml(email)}</span>
-                    ${data.role === 'admin' ? '<span class="ml-2 text-xs bg-brand/30 text-brand-dark px-2 py-0.5 rounded">管理員</span>' : ''}
+                    ${ROLE_BADGE[role] || ROLE_BADGE.user}
+                    ${isSelf ? '<span class="text-xs text-gray-400">（你自己）</span>' : ''}
                 </div>
-                <button onclick="removeWhitelist('${email}')" class="text-red-400 hover:text-red-600 text-sm">移除</button>
+                <div class="flex items-center gap-2">
+                    <select onchange="changeWhitelistRole('${email}', this.value)" ${roleSelectDisabled}
+                        class="border border-gray-300 rounded px-2 py-1 text-xs ${roleSelectDisabled ? 'bg-gray-100 text-gray-400' : ''}">
+                        <option value="user" ${role === 'user' ? 'selected' : ''}>user</option>
+                        <option value="manager" ${role === 'manager' ? 'selected' : ''}>manager</option>
+                        <option value="admin" ${role === 'admin' ? 'selected' : ''} ${adminOptionAttr}>admin</option>
+                    </select>
+                    ${canDelete
+                        ? `<button onclick="removeWhitelist('${email}')" class="text-red-400 hover:text-red-600 text-sm">移除</button>`
+                        : '<span class="text-xs text-gray-300">無權移除</span>'}
+                </div>
             `;
             list.appendChild(div);
         });
@@ -1319,22 +1349,58 @@ async function loadWhitelist() {
 async function addWhitelist() {
     const input = document.getElementById('new-email');
     const email = input.value.trim().toLowerCase();
+    const role = document.getElementById('new-role').value || 'user';
     if (!email || !email.includes('@')) {
         showToast('請輸入有效的 Email', 'error');
+        return;
+    }
+    if (role === 'admin' && !isAdmin()) {
+        showToast('只有 admin 可以新增 admin', 'error');
         return;
     }
     try {
         await db.collection(COLLECTIONS.whitelist).doc(email).set({
             addedAt: firebase.firestore.FieldValue.serverTimestamp(),
             addedBy: currentUser.email,
-            role: 'user'
+            role
         });
         input.value = '';
+        document.getElementById('new-role').value = 'user';
         showToast('已新增白名單');
         loadWhitelist();
     } catch (err) {
         console.error(err);
-        showToast('新增失敗', 'error');
+        showToast('新增失敗：' + err.message, 'error');
+    }
+}
+
+async function changeWhitelistRole(email, newRole) {
+    if (email === currentUser.email) {
+        showToast('不能修改自己的角色', 'error');
+        loadWhitelist();
+        return;
+    }
+    if (newRole === 'admin' && !isAdmin()) {
+        showToast('只有 admin 可以指派 admin', 'error');
+        loadWhitelist();
+        return;
+    }
+    if (!confirm(`確定將 ${email} 改為 ${newRole}？`)) {
+        loadWhitelist();
+        return;
+    }
+    try {
+        await db.collection(COLLECTIONS.whitelist).doc(email).update({
+            role: newRole,
+            updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+            updatedBy: currentUser.email
+        });
+        showToast(`已將 ${email} 設為 ${newRole}`);
+        loadWhitelist();
+    } catch (err) {
+        console.error(err);
+        showToast('修改失敗：' + err.message, 'error');
+        loadWhitelist();
     }
 }
 
@@ -1350,7 +1416,7 @@ async function removeWhitelist(email) {
         loadWhitelist();
     } catch (err) {
         console.error(err);
-        showToast('移除失敗', 'error');
+        showToast('移除失敗：' + err.message, 'error');
     }
 }
 
@@ -1360,6 +1426,7 @@ async function loadProducts() {
         const snapshot = await db.collection(COLLECTIONS.product).orderBy('customerType').get();
         allProducts = [];
         snapshot.forEach(doc => allProducts.push({ id: doc.id, ...doc.data() }));
+        normalizeProducts();
         renderProductTable();
     } catch (err) {
         console.error(err);
@@ -1367,134 +1434,235 @@ async function loadProducts() {
     }
 }
 
-function renderProductTable() {
-    const tbody = document.getElementById('product-tbody');
-    const empty = document.getElementById('product-empty');
-    const countEl = document.getElementById('product-count');
+// ===== 後台：產品報價（類 Excel 多筆同時編輯） =====
+
+const VALID_CUSTOMER_TYPES = ['團購', '經銷/批發', '餐廳', '實體店面銷售', '貿易商'];
+
+function escAttr(s) {
+    return String(s ?? '').replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
+}
+
+// loadProducts 載入後 normalize：給每筆一個 _id（用 firestore docId）、_state='clean'、_orig 快照
+function normalizeProducts() {
+    allProducts.forEach(p => {
+        p._id = p.id;
+        p._state = 'clean';
+        p._deleted = false;
+        // 兼容舊欄位
+        if (p.spec && !p.quantitySpec) p.quantitySpec = p.spec;
+        if (p.unit && !p.unitContent) p.unitContent = p.unit;
+        if ((p.price || p.price === 0) && p.costPrice === undefined) p.costPrice = p.price;
+        p._orig = JSON.stringify(productPayload(p));
+    });
+}
+
+function productPayload(p) {
+    return {
+        customerType: p.customerType || '',
+        code: p.code || '',
+        name: p.name || '',
+        quantitySpec: p.quantitySpec || '',
+        unitContent: p.unitContent || '',
+        costPrice: Number(p.costPrice) || 0,
+        retailPrice: Number(p.retailPrice) || 0,
+        storage: p.storage || '',
+        note: p.note || ''
+    };
+}
+
+function genTempId() { return '__new_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7); }
+
+function getProductsView() {
     const filter = document.getElementById('product-filter-type').value;
     const q = (document.getElementById('product-search').value || '').trim().toLowerCase();
-
-    let list = allProducts.slice();
+    let list = allProducts.filter(p => !p._deleted);
     if (filter) list = list.filter(p => p.customerType === filter);
     if (q) list = list.filter(p =>
         (p.name || '').toLowerCase().includes(q) ||
         (p.code || '').toLowerCase().includes(q) ||
-        (p.spec || '').toLowerCase().includes(q)
+        (p.quantitySpec || '').toLowerCase().includes(q)
     );
+    return list;
+}
 
+function renderProductTable() {
+    const tbody = document.getElementById('product-tbody');
+    const empty = document.getElementById('product-empty');
+    const countEl = document.getElementById('product-count');
+    const list = getProductsView();
     countEl.textContent = `共 ${list.length} 筆`;
-    if (list.length === 0) {
+    const visibleAll = allProducts.filter(p => !p._deleted);
+    if (visibleAll.length === 0) {
         tbody.innerHTML = '';
         empty.classList.remove('hidden');
+    } else {
+        empty.classList.add('hidden');
+        tbody.innerHTML = list.map(p => productRowHtml(p)).join('');
+    }
+    updateDirtyBar();
+}
+
+function productRowHtml(p) {
+    const id = p._id;
+    const stateClass = p._state === 'new' ? 'bg-green-50' : p._state === 'dirty' ? 'bg-yellow-50' : '';
+    const typeOpts = VALID_CUSTOMER_TYPES.map(t =>
+        `<option value="${t}"${p.customerType === t ? ' selected' : ''}>${t}</option>`
+    ).join('');
+    return `<tr class="${stateClass} border-b border-gray-100">
+        <td class="p-1"><select class="w-full border border-gray-200 rounded px-2 py-1 text-xs"
+            onchange="updateProductField('${id}', 'customerType', this.value)">
+            <option value=""${!p.customerType ? ' selected' : ''}>請選擇</option>${typeOpts}
+        </select></td>
+        <td class="p-1"><input type="text" value="${escAttr(p.code || '')}" class="w-full border border-gray-200 rounded px-2 py-1 text-xs font-mono" onchange="updateProductField('${id}', 'code', this.value)"></td>
+        <td class="p-1"><input type="text" value="${escAttr(p.name || '')}" class="w-full border border-gray-200 rounded px-2 py-1 text-sm" onchange="updateProductField('${id}', 'name', this.value)"></td>
+        <td class="p-1"><input type="text" value="${escAttr(p.quantitySpec || '')}" class="w-full border border-gray-200 rounded px-2 py-1 text-xs" onchange="updateProductField('${id}', 'quantitySpec', this.value)"></td>
+        <td class="p-1"><input type="text" value="${escAttr(p.unitContent || '')}" class="w-full border border-gray-200 rounded px-2 py-1 text-xs" onchange="updateProductField('${id}', 'unitContent', this.value)"></td>
+        <td class="p-1"><input type="number" min="0" step="0.01" value="${p.costPrice ?? ''}" class="w-full border border-gray-200 rounded px-2 py-1 text-xs text-right font-mono" onchange="updateProductField('${id}', 'costPrice', this.value)"></td>
+        <td class="p-1"><input type="number" min="0" step="0.01" value="${p.retailPrice ?? ''}" class="w-full border border-gray-200 rounded px-2 py-1 text-xs text-right font-mono" onchange="updateProductField('${id}', 'retailPrice', this.value)"></td>
+        <td class="p-1"><input type="text" value="${escAttr(p.storage || '')}" class="w-full border border-gray-200 rounded px-2 py-1 text-xs" onchange="updateProductField('${id}', 'storage', this.value)"></td>
+        <td class="p-1"><input type="text" value="${escAttr(p.note || '')}" class="w-full border border-gray-200 rounded px-2 py-1 text-xs" onchange="updateProductField('${id}', 'note', this.value)"></td>
+        <td class="p-1 text-center"><button onclick="markProductRowDeleted('${id}')" class="text-red-400 hover:text-red-600 text-xl leading-none" title="刪除">×</button></td>
+    </tr>`;
+}
+
+function updateProductField(id, field, value) {
+    const p = allProducts.find(x => x._id === id);
+    if (!p) return;
+    if (field === 'costPrice' || field === 'retailPrice') {
+        p[field] = value === '' ? '' : (Number(value) || 0);
+    } else {
+        p[field] = value;
+    }
+    // 重新計算 state
+    if (p._state === 'new') return;  // 新建的維持 new
+    p._state = JSON.stringify(productPayload(p)) === p._orig ? 'clean' : 'dirty';
+    updateDirtyBar();
+    // 更新該行 background（不重 render 全表，避免游標跳動）
+    const tr = [...document.querySelectorAll('#product-tbody tr')]
+        .find(t => t.querySelector(`button[onclick*="${id}"]`));
+    if (tr) {
+        tr.classList.remove('bg-green-50', 'bg-yellow-50');
+        if (p._state === 'new') tr.classList.add('bg-green-50');
+        else if (p._state === 'dirty') tr.classList.add('bg-yellow-50');
+    }
+}
+
+function addBlankProductRow() {
+    const filter = document.getElementById('product-filter-type').value;
+    const newP = {
+        _id: genTempId(),
+        _state: 'new',
+        _deleted: false,
+        customerType: filter || '',
+        code: '', name: '', quantitySpec: '', unitContent: '',
+        costPrice: '', retailPrice: '', storage: '', note: ''
+    };
+    allProducts.push(newP);
+    renderProductTable();
+}
+
+function addBlankProductRows(n) {
+    for (let i = 0; i < n; i++) addBlankProductRow();
+}
+
+function markProductRowDeleted(id) {
+    const p = allProducts.find(x => x._id === id);
+    if (!p) return;
+    if (p._state === 'new') {
+        // 新建未存的直接從 array 拔掉
+        allProducts = allProducts.filter(x => x._id !== id);
+    } else {
+        if (!confirm('確定要刪除這筆產品嗎？儲存後將從雲端永久移除。')) return;
+        p._deleted = true;
+    }
+    renderProductTable();
+}
+
+function countProductChanges() {
+    let dirty = 0, created = 0, deleted = 0;
+    allProducts.forEach(p => {
+        if (p._deleted && p._state !== 'new') deleted++;
+        else if (p._state === 'new') created++;
+        else if (p._state === 'dirty') dirty++;
+    });
+    return { dirty, created, deleted, total: dirty + created + deleted };
+}
+
+function updateDirtyBar() {
+    const { dirty, created, deleted, total } = countProductChanges();
+    const bar = document.getElementById('product-dirty-bar');
+    const msg = document.getElementById('product-dirty-msg');
+    if (total === 0) {
+        bar.classList.add('hidden');
+    } else {
+        bar.classList.remove('hidden');
+        msg.textContent = `尚未儲存：新增 ${created} 筆／修改 ${dirty} 筆／刪除 ${deleted} 筆`;
+    }
+}
+
+async function saveAllProducts() {
+    const { total } = countProductChanges();
+    if (total === 0) {
+        showToast('沒有變更需要儲存');
         return;
     }
-    empty.classList.add('hidden');
-    tbody.innerHTML = list.map(p => `<tr class="border-b border-gray-100">
-        <td class="p-3"><span class="inline-block px-2 py-0.5 rounded text-xs bg-orange-100 text-orange-700">${escHtml(p.customerType || '')}</span></td>
-        <td class="p-3 font-mono text-xs">${escHtml(p.code || '')}</td>
-        <td class="p-3 font-medium">${escHtml(p.name || '')}</td>
-        <td class="p-3">${escHtml(p.spec || '')}</td>
-        <td class="p-3">${escHtml(p.unit || '')}</td>
-        <td class="p-3 text-right font-mono">${formatPrice(p.price)}</td>
-        <td class="p-3 text-xs text-gray-500">${escHtml(p.note || '')}</td>
-        <td class="p-3"><button onclick="openProductModal('${p.id}')" class="text-blue-500 hover:text-blue-700 text-sm font-medium">編輯</button></td>
-    </tr>`).join('');
+    // 驗證新建/修改的必要欄位
+    const invalid = allProducts.find(p =>
+        !p._deleted && (p._state === 'new' || p._state === 'dirty')
+        && (!p.customerType || !p.name)
+    );
+    if (invalid) {
+        showToast('有資料缺「客戶類型」或「產品名稱」，請補齊', 'error');
+        return;
+    }
+    if (!confirm('確認儲存全部變更嗎？')) return;
+    try {
+        const batch = db.batch();
+        const now = firebase.firestore.FieldValue.serverTimestamp();
+        allProducts.forEach(p => {
+            if (p._deleted && p._state !== 'new') {
+                batch.delete(db.collection(COLLECTIONS.product).doc(p._id));
+            } else if (p._state === 'new') {
+                const ref = db.collection(COLLECTIONS.product).doc();
+                batch.set(ref, { ...productPayload(p), createdAt: now, updatedAt: now });
+            } else if (p._state === 'dirty') {
+                batch.update(db.collection(COLLECTIONS.product).doc(p._id), { ...productPayload(p), updatedAt: now });
+            }
+        });
+        await batch.commit();
+        showToast('已儲存全部變更');
+        loadProducts();  // 重新載入並 normalize
+    } catch (err) {
+        console.error(err);
+        showToast('儲存失敗：' + err.message, 'error');
+    }
+}
+
+function discardProductChanges() {
+    if (!confirm('確定捨棄所有未儲存的變更？')) return;
+    loadProducts();
 }
 
 function formatPrice(v) {
     const n = Number(v);
-    if (isNaN(n)) return '';
+    if (isNaN(n) || n === 0) return n === 0 ? '0' : '';
     return n.toLocaleString('zh-TW', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
-}
-
-function openProductModal(docId) {
-    document.getElementById('product-form').reset();
-    document.getElementById('product-doc-id').value = docId || '';
-    document.getElementById('product-modal-title').textContent = docId ? '編輯產品' : '新增產品';
-    document.getElementById('product-btn-delete').classList.toggle('hidden', !docId);
-    if (docId) {
-        const p = allProducts.find(x => x.id === docId);
-        if (p) {
-            document.getElementById('product-customerType').value = p.customerType || '';
-            document.getElementById('product-code').value = p.code || '';
-            document.getElementById('product-name').value = p.name || '';
-            document.getElementById('product-spec').value = p.spec || '';
-            document.getElementById('product-unit').value = p.unit || '';
-            document.getElementById('product-price').value = p.price ?? '';
-            document.getElementById('product-note').value = p.note || '';
-        }
-    } else {
-        // 預設帶入目前篩選的客戶類型
-        const filter = document.getElementById('product-filter-type').value;
-        if (filter) document.getElementById('product-customerType').value = filter;
-    }
-    document.getElementById('modal-product').classList.remove('hidden');
-}
-
-function closeProductModal() {
-    document.getElementById('modal-product').classList.add('hidden');
-}
-
-async function saveProduct(e) {
-    e.preventDefault();
-    const docId = document.getElementById('product-doc-id').value;
-    const data = {
-        customerType: document.getElementById('product-customerType').value,
-        code: document.getElementById('product-code').value.trim(),
-        name: document.getElementById('product-name').value.trim(),
-        spec: document.getElementById('product-spec').value.trim(),
-        unit: document.getElementById('product-unit').value.trim(),
-        price: Number(document.getElementById('product-price').value) || 0,
-        note: document.getElementById('product-note').value.trim(),
-        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-    };
-    try {
-        if (docId) {
-            await db.collection(COLLECTIONS.product).doc(docId).update(data);
-            showToast('已更新');
-        } else {
-            data.createdAt = firebase.firestore.FieldValue.serverTimestamp();
-            await db.collection(COLLECTIONS.product).add(data);
-            showToast('已新增');
-        }
-        closeProductModal();
-        loadProducts();
-    } catch (err) {
-        console.error(err);
-        showToast('儲存失敗', 'error');
-    }
-}
-
-async function deleteProduct() {
-    const docId = document.getElementById('product-doc-id').value;
-    if (!docId) return;
-    if (!confirm('確定要刪除這個產品嗎？')) return;
-    try {
-        await db.collection(COLLECTIONS.product).doc(docId).delete();
-        closeProductModal();
-        showToast('已刪除');
-        loadProducts();
-    } catch (err) {
-        console.error(err);
-        showToast('刪除失敗', 'error');
-    }
 }
 
 // ----- 產品匯入/匯出範本 -----
 function downloadProductTemplate() {
-    const headers = ['客戶類型', '產品編號', '產品名稱', '規格', '單位', '報價', '備註'];
+    const headers = ['客戶類型', '產品編號', '產品名稱', '數量/規格', '單位(內容物)', '進貨價', '建議末端售價', '保存方法(效期)', '備註'];
     const sample = [
-        ['團購', 'P001', '範例：素肉乾', '300g/包', '包', 150, '示範資料，可刪除'],
-        ['經銷/批發', 'P002', '範例：素水餃', '20粒/包', '包', 80, '']
+        ['團購', 'P001', '範例：手工水餃(30粒裝)', '約30粒(秤重)/包', '約540克/包', 89, 125, '冷凍-18℃(一年)', '示範資料'],
+        ['經銷/批發', 'P002', '範例：好似肉乾(原味)', '22g/10入/盒', '22g/10入/盒', 22, 30, '常溫', ''],
+        ['餐廳', 'P003', '範例：素肉燥', '390g/罐', '390g/罐', 95, 130, '常溫', '']
     ];
     const ws = XLSX.utils.aoa_to_sheet([headers, ...sample]);
-    ws['!cols'] = [{ wch: 18 }, { wch: 12 }, { wch: 25 }, { wch: 15 }, { wch: 8 }, { wch: 10 }, { wch: 25 }];
+    ws['!cols'] = [{ wch: 14 }, { wch: 10 }, { wch: 28 }, { wch: 20 }, { wch: 18 }, { wch: 10 }, { wch: 12 }, { wch: 18 }, { wch: 20 }];
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, '產品報價');
     XLSX.writeFile(wb, '產品報價匯入範本.xlsx');
 }
-
-const VALID_CUSTOMER_TYPES = ['團購', '經銷/批發', '餐廳', '實體店面銷售', '貿易商'];
 
 async function importProducts(e) {
     const file = e.target.files[0];
@@ -1509,8 +1677,7 @@ async function importProducts(e) {
             e.target.value = '';
             return;
         }
-        let ok = 0, skip = 0;
-        const batch = db.batch();
+        let added = 0, skip = 0;
         rows.forEach(r => {
             const ct = String(r['客戶類型'] || '').trim();
             const name = String(r['產品名稱'] || '').trim();
@@ -1518,22 +1685,24 @@ async function importProducts(e) {
                 skip++;
                 return;
             }
-            const ref = db.collection(COLLECTIONS.product).doc();
-            batch.set(ref, {
+            allProducts.push({
+                _id: genTempId(),
+                _state: 'new',
+                _deleted: false,
                 customerType: ct,
                 code: String(r['產品編號'] || '').trim(),
                 name,
-                spec: String(r['規格'] || '').trim(),
-                unit: String(r['單位'] || '').trim(),
-                price: Number(r['報價']) || 0,
-                note: String(r['備註'] || '').trim(),
-                createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                quantitySpec: String(r['數量/規格'] || r['規格'] || '').trim(),
+                unitContent: String(r['單位(內容物)'] || r['單位'] || '').trim(),
+                costPrice: Number(r['進貨價'] || r['報價']) || 0,
+                retailPrice: Number(r['建議末端售價']) || 0,
+                storage: String(r['保存方法(效期)'] || '').trim(),
+                note: String(r['備註'] || '').trim()
             });
-            ok++;
+            added++;
         });
-        await batch.commit();
-        showToast(`匯入完成：成功 ${ok} 筆，略過 ${skip} 筆`);
-        loadProducts();
+        renderProductTable();
+        showToast(`匯入 ${added} 筆到暫存區（略過 ${skip} 筆），請點「儲存全部變更」寫入雲端`);
     } catch (err) {
         console.error(err);
         showToast('匯入失敗：' + err.message, 'error');
@@ -1542,7 +1711,7 @@ async function importProducts(e) {
     }
 }
 
-// ===== 後台：產生報價單 =====
+// ===== 後台：產生報價單（按 Excel 範本格式） =====
 async function openQuoteFromRow(customerId) {
     const customer = allData.find(d => d.id === customerId);
     if (!customer) return;
@@ -1557,7 +1726,6 @@ async function openQuoteFromRow(customerId) {
 }
 
 async function openQuoteForCustomer() {
-    // 從編輯 modal 開啟
     const docId = document.getElementById('edit-doc-id').value;
     closeEditModal();
     openQuoteFromRow(docId);
@@ -1568,14 +1736,19 @@ async function ensureProductsLoaded() {
         const snapshot = await db.collection(COLLECTIONS.product).get();
         allProducts = [];
         snapshot.forEach(doc => allProducts.push({ id: doc.id, ...doc.data() }));
+        normalizeProducts();
     }
+}
+
+function getQuoteList() {
+    return allProducts.filter(p => !p._deleted && p.customerType === quoteCustomer.customerType);
 }
 
 function renderQuoteModal() {
     document.getElementById('quote-customer-name').textContent = quoteCustomer.name || '';
     document.getElementById('quote-customer-type').textContent = quoteCustomer.customerType || '';
-    const list = allProducts.filter(p => p.customerType === quoteCustomer.customerType);
-    quoteRows = list.map(p => ({ productId: p.id, qty: 0, selected: false }));
+    const list = getQuoteList();
+    quoteRows = list.map(p => ({ productId: p._id, selected: false }));
     const tbody = document.getElementById('quote-product-tbody');
     const empty = document.getElementById('quote-empty');
     if (list.length === 0) {
@@ -1584,28 +1757,23 @@ function renderQuoteModal() {
     } else {
         empty.classList.add('hidden');
         tbody.innerHTML = list.map((p, i) => `<tr class="border-b border-gray-100">
-            <td class="p-2"><input type="checkbox" class="custom-checkbox" data-idx="${i}" onchange="onQuoteRowChange(${i}, 'selected', this.checked)"></td>
+            <td class="p-2"><input type="checkbox" class="custom-checkbox" data-idx="${i}" onchange="onQuoteRowChange(${i}, this.checked)"></td>
             <td class="p-2 font-mono text-xs">${escHtml(p.code || '')}</td>
             <td class="p-2">${escHtml(p.name || '')}</td>
-            <td class="p-2">${escHtml(p.spec || '')}</td>
-            <td class="p-2">${escHtml(p.unit || '')}</td>
-            <td class="p-2 text-right font-mono">${formatPrice(p.price)}</td>
-            <td class="p-2 text-right"><input type="number" min="0" step="1" value="0" class="w-20 border border-gray-300 rounded px-2 py-1 text-right" onchange="onQuoteRowChange(${i}, 'qty', this.value)"></td>
-            <td class="p-2 text-right font-mono" id="quote-subtotal-${i}">0</td>
+            <td class="p-2 text-xs">${escHtml(p.quantitySpec || '')}</td>
+            <td class="p-2 text-xs">${escHtml(p.unitContent || '')}</td>
+            <td class="p-2 text-right font-mono">${formatPrice(p.costPrice)}</td>
+            <td class="p-2 text-right font-mono">${formatPrice(p.retailPrice)}</td>
+            <td class="p-2 text-xs">${escHtml(p.storage || '')}</td>
         </tr>`).join('');
     }
     document.getElementById('quote-select-all').checked = false;
-    updateQuoteTotal();
+    updateQuoteCount();
 }
 
-function onQuoteRowChange(idx, field, val) {
-    if (field === 'qty') quoteRows[idx].qty = Number(val) || 0;
-    else if (field === 'selected') quoteRows[idx].selected = !!val;
-    const list = allProducts.filter(p => p.customerType === quoteCustomer.customerType);
-    const sub = (Number(list[idx].price) || 0) * (quoteRows[idx].qty || 0);
-    const cell = document.getElementById('quote-subtotal-' + idx);
-    if (cell) cell.textContent = formatPrice(sub);
-    updateQuoteTotal();
+function onQuoteRowChange(idx, checked) {
+    quoteRows[idx].selected = !!checked;
+    updateQuoteCount();
 }
 
 function toggleQuoteSelectAll(cb) {
@@ -1613,20 +1781,12 @@ function toggleQuoteSelectAll(cb) {
         c.checked = cb.checked;
         if (quoteRows[i]) quoteRows[i].selected = cb.checked;
     });
-    updateQuoteTotal();
+    updateQuoteCount();
 }
 
-function updateQuoteTotal() {
-    const list = allProducts.filter(p => p.customerType === quoteCustomer.customerType);
-    let total = 0, count = 0;
-    quoteRows.forEach((r, i) => {
-        if (r.selected) {
-            count++;
-            total += (Number(list[i].price) || 0) * (r.qty || 0);
-        }
-    });
+function updateQuoteCount() {
+    const count = quoteRows.filter(r => r.selected).length;
     document.getElementById('quote-selected-count').textContent = count;
-    document.getElementById('quote-total').textContent = formatPrice(total);
 }
 
 function closeQuoteModal() {
@@ -1636,46 +1796,66 @@ function closeQuoteModal() {
 }
 
 function exportQuote() {
-    const list = allProducts.filter(p => p.customerType === quoteCustomer.customerType);
+    const list = getQuoteList();
     const picks = [];
     quoteRows.forEach((r, i) => {
-        if (r.selected) picks.push({ ...list[i], qty: r.qty || 0 });
+        if (r.selected) picks.push(list[i]);
     });
     if (picks.length === 0) {
         showToast('請至少勾選一個產品', 'error');
         return;
     }
+    // 報價日期 = 今天（台灣時間）
+    const d = new Date();
+    const today = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+    // 有效期限 = 今年 12 月底
+    const validUntil = `${d.getFullYear()}.12.31`;
 
-    const today = (() => {
-        const d = new Date();
-        return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
-    })();
-
+    // 依範本格式組 AOA
     const aoa = [
-        ['得來素企業有限公司　報價單'],
-        [],
-        ['客戶名稱', quoteCustomer.name || '', '', '客戶編號', quoteCustomer.customId || ''],
-        ['客戶類型', quoteCustomer.customerType || '', '', '報價日期', today],
-        ['聯絡人', quoteCustomer.contact || '', '', '聯絡電話', quoteCustomer.phone || quoteCustomer.mobile || ''],
-        [],
-        ['項次', '產品編號', '產品名稱', '規格', '單位', '單價', '數量', '小計', '備註']
+        [' '],  // row 0 空白
+        ['訂貨電話：04-25220050', '', '傳真:04-25220550', '', '電子信箱:dlsveg@gmail.com'],
+        ['聯絡人:黃文弘', '', '手機:0930551100'],
+        ['聯絡地址:420台中市豐原區水源路427巷32號'],
+        ['報價單'],  // row 4 標題
+        ['客戶名稱：', quoteCustomer.name || '', '', '', '', '電話：', quoteCustomer.phone || ''],
+        ['聯絡人：', quoteCustomer.contact || '', '', '', '', '傳真：', quoteCustomer.fax || ''],
+        ['電子信箱：', quoteCustomer.email || '', '', '', '', '手機：', quoteCustomer.mobile || ''],
+        ['聯絡地址：', quoteCustomer.companyAddr || quoteCustomer.invoiceAddr || ''],
+        ['報價日期：', today],
+        ['序號', '產品名稱', '數量/規格', '單位(內容物)', '進貨價', '建議末端售價', '保存方法(效期)']
     ];
-    let total = 0;
     picks.forEach((p, i) => {
-        const subtotal = (Number(p.price) || 0) * (p.qty || 0);
-        total += subtotal;
-        aoa.push([i + 1, p.code || '', p.name || '', p.spec || '', p.unit || '', Number(p.price) || 0, p.qty || 0, subtotal, p.note || '']);
+        aoa.push([
+            i + 1,
+            p.name || '',
+            p.quantitySpec || '',
+            p.unitContent || '',
+            Number(p.costPrice) || 0,
+            Number(p.retailPrice) || 0,
+            p.storage || ''
+        ]);
     });
     aoa.push([]);
-    aoa.push(['', '', '', '', '', '', '總計', total, '']);
+    aoa.push([]);
+    aoa.push(['PS：', `1.本報價單有效期限至${validUntil}`]);
+    aoa.push(['', '2.此報價金額皆為含稅價']);
+    aoa.push(['', '3.訂購需滿$7000即可享有此報價優惠價格(免運費)']);
 
     const ws = XLSX.utils.aoa_to_sheet(aoa);
-    ws['!cols'] = [{ wch: 6 }, { wch: 12 }, { wch: 25 }, { wch: 15 }, { wch: 8 }, { wch: 10 }, { wch: 8 }, { wch: 12 }, { wch: 20 }];
-    ws['!merges'] = [{ s: { r: 0, c: 0 }, e: { r: 0, c: 8 } }];
+    ws['!cols'] = [
+        { wch: 8 }, { wch: 30 }, { wch: 22 }, { wch: 22 },
+        { wch: 12 }, { wch: 14 }, { wch: 22 }
+    ];
+    // 標題列合併
+    ws['!merges'] = [
+        { s: { r: 4, c: 0 }, e: { r: 4, c: 6 } }   // "報價單" 跨整行
+    ];
     const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, '報價單');
+    XLSX.utils.book_append_sheet(wb, ws, '得來素');
     const safeName = (quoteCustomer.name || '客戶').replace(/[\\/:*?"<>|]/g, '');
-    XLSX.writeFile(wb, `報價單_${safeName}_${today}.xlsx`);
+    const ctTag = (quoteCustomer.customerType || '').replace(/\//g, '');
+    XLSX.writeFile(wb, `報價單(${ctTag})_${safeName}_${today}.xlsx`);
     showToast('報價單已匯出');
     closeQuoteModal();
 }
