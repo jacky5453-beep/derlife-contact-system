@@ -758,10 +758,6 @@ async function onCustomerTypeChange() {
                         ${p.storage ? `<span class="mr-2">🌡 ${escAttr(p.storage)}</span>` : ''}
                     </div>
                 </div>
-                <div class="text-right text-xs whitespace-nowrap">
-                    <div class="font-mono text-brand-dark">進 $${formatPrice(p.costPrice)}</div>
-                    ${p.retailPrice ? `<div class="font-mono text-orange-500">建議 $${formatPrice(p.retailPrice)}</div>` : ''}
-                </div>
             </label>
         `).join('');
     } catch (err) {
