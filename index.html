@@ -352,6 +352,14 @@
                     <button onclick="addBlankProductRows(10)" class="px-3 py-2 rounded-lg text-sm font-medium text-brand-dark border border-gray-300 hover:bg-gray-50">
                         + 一次加 10 列
                     </button>
+                    <select id="import-customer-type" class="border border-gray-300 rounded-lg px-2 py-2 text-sm focus:ring-2 focus:ring-brand focus:border-brand outline-none" title="若匯入「報價單」格式，需先選此檔的客戶類型">
+                        <option value="">[報價單匯入] 客戶類型</option>
+                        <option value="團購">團購</option>
+                        <option value="經銷/批發">經銷/批發</option>
+                        <option value="餐廳">餐廳</option>
+                        <option value="實體店面銷售">實體店面銷售</option>
+                        <option value="貿易商">貿易商</option>
+                    </select>
                     <label class="px-3 py-2 rounded-lg text-sm font-medium text-white cursor-pointer" style="background: #1A1A16;">
                         匯入 Excel
                         <input type="file" accept=".xlsx,.xls,.csv" class="hidden" onchange="importProducts(event)">
@@ -1670,39 +1678,96 @@ async function importProducts(e) {
     try {
         const buf = await file.arrayBuffer();
         const wb = XLSX.read(buf, { type: 'array' });
-        const ws = wb.Sheets[wb.SheetNames[0]];
-        const rows = XLSX.utils.sheet_to_json(ws, { defval: '' });
-        if (rows.length === 0) {
-            showToast('檔案沒有資料', 'error');
+        let added = 0, skip = 0, usedFormat = null;
+        const overrideCt = document.getElementById('import-customer-type').value;
+
+        for (const sheetName of wb.SheetNames) {
+            const ws = wb.Sheets[sheetName];
+            const aoa = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
+            if (!aoa.length) continue;
+
+            // 1) 範本格式：第一列含「客戶類型」+「產品名稱」
+            const head0 = (aoa[0] || []).map(x => String(x).trim());
+            const isTemplate = head0.includes('客戶類型') && head0.includes('產品名稱');
+            if (isTemplate) {
+                const rows = XLSX.utils.sheet_to_json(ws, { defval: '' });
+                rows.forEach(r => {
+                    const ct = String(r['客戶類型'] || '').trim();
+                    const name = String(r['產品名稱'] || '').trim();
+                    if (!ct || !name || !VALID_CUSTOMER_TYPES.includes(ct)) { skip++; return; }
+                    allProducts.push({
+                        _id: genTempId(), _state: 'new', _deleted: false,
+                        customerType: ct,
+                        code: String(r['產品編號'] || '').trim(),
+                        name,
+                        quantitySpec: String(r['數量/規格'] || r['規格'] || '').trim(),
+                        unitContent: String(r['單位(內容物)'] || r['單位'] || '').trim(),
+                        costPrice: Number(r['進貨價'] || r['報價']) || 0,
+                        retailPrice: Number(r['建議末端售價']) || 0,
+                        storage: String(r['保存方法(效期)'] || '').trim(),
+                        note: String(r['備註'] || '').trim()
+                    });
+                    added++;
+                });
+                usedFormat = 'template';
+                break;
+            }
+
+            // 2) 報價單格式：找含「序號」+「產品名稱」的表頭列，從下一列起讀
+            const headerIdx = aoa.findIndex(row => {
+                const cells = (row || []).map(x => String(x).trim());
+                return cells.includes('序號') && cells.includes('產品名稱');
+            });
+            if (headerIdx >= 0) {
+                if (!overrideCt || !VALID_CUSTOMER_TYPES.includes(overrideCt)) {
+                    showToast('偵測到「報價單」格式，請先在匯入按鈕旁的下拉選擇此檔的客戶類型再匯入', 'error');
+                    e.target.value = '';
+                    return;
+                }
+                const headerRow = (aoa[headerIdx] || []).map(x => String(x).trim());
+                const idx = (col) => headerRow.indexOf(col);
+                const cSeq = idx('序號'),
+                      cName = idx('產品名稱'),
+                      cQS = idx('數量/規格'),
+                      cUC = idx('單位(內容物)'),
+                      cCost = idx('進貨價'),
+                      cRetail = idx('建議末端售價'),
+                      cStorage = idx('保存方法(效期)');
+                for (let i = headerIdx + 1; i < aoa.length; i++) {
+                    const r = aoa[i] || [];
+                    const seqRaw = r[cSeq];
+                    const name = String(r[cName] || '').trim();
+                    if (!name) continue;
+                    const seqNum = Number(seqRaw);
+                    if (isNaN(seqNum) || seqNum <= 0) continue; // 避開 PS 條款等說明列
+                    allProducts.push({
+                        _id: genTempId(), _state: 'new', _deleted: false,
+                        customerType: overrideCt,
+                        code: '',
+                        name,
+                        quantitySpec: cQS >= 0 ? String(r[cQS] || '').trim() : '',
+                        unitContent: cUC >= 0 ? String(r[cUC] || '').trim() : '',
+                        costPrice: cCost >= 0 ? (Number(r[cCost]) || 0) : 0,
+                        retailPrice: cRetail >= 0 ? (Number(r[cRetail]) || 0) : 0,
+                        storage: cStorage >= 0 ? String(r[cStorage] || '').trim() : '',
+                        note: ''
+                    });
+                    added++;
+                }
+                usedFormat = 'quotation';
+                break;
+            }
+        }
+
+        if (!usedFormat) {
+            showToast('無法辨識檔案格式，請使用「下載匯入範本」的格式或公司報價單格式', 'error');
             e.target.value = '';
             return;
         }
-        let added = 0, skip = 0;
-        rows.forEach(r => {
-            const ct = String(r['客戶類型'] || '').trim();
-            const name = String(r['產品名稱'] || '').trim();
-            if (!ct || !name || !VALID_CUSTOMER_TYPES.includes(ct)) {
-                skip++;
-                return;
-            }
-            allProducts.push({
-                _id: genTempId(),
-                _state: 'new',
-                _deleted: false,
-                customerType: ct,
-                code: String(r['產品編號'] || '').trim(),
-                name,
-                quantitySpec: String(r['數量/規格'] || r['規格'] || '').trim(),
-                unitContent: String(r['單位(內容物)'] || r['單位'] || '').trim(),
-                costPrice: Number(r['進貨價'] || r['報價']) || 0,
-                retailPrice: Number(r['建議末端售價']) || 0,
-                storage: String(r['保存方法(效期)'] || '').trim(),
-                note: String(r['備註'] || '').trim()
-            });
-            added++;
-        });
+
         renderProductTable();
-        showToast(`匯入 ${added} 筆到暫存區（略過 ${skip} 筆），請點「儲存全部變更」寫入雲端`);
+        const fmtName = usedFormat === 'template' ? '匯入範本' : '報價單';
+        showToast(`已用「${fmtName}」格式匯入 ${added} 筆到暫存區${skip ? `（略過 ${skip} 筆）` : ''}，請點「儲存全部變更」寫入雲端`);
     } catch (err) {
         console.error(err);
         showToast('匯入失敗：' + err.message, 'error');
