@@ -91,24 +91,24 @@
             <!-- 廠商 -->
             <div onclick="navigateTo('supplier-entry')"
                  class="cursor-pointer bg-white rounded-2xl shadow-md hover:shadow-xl transition p-8 border-2 border-transparent hover:border-brand group">
-                <div class="w-16 h-16 mx-auto mb-4 bg-brand/20 rounded-full flex items-center justify-center group-hover:bg-brand/40 transition">
+                <div id="home-supplier-icon" class="w-16 h-16 mx-auto mb-4 bg-brand/20 rounded-full flex items-center justify-center group-hover:bg-brand/40 transition text-3xl overflow-hidden">
                     <svg class="w-8 h-8 text-brand-dark" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path>
                     </svg>
                 </div>
-                <h3 class="text-xl font-bold text-brand-dark mb-2">我要賣貨</h3>
-                <p class="text-gray-400 text-sm">廠商提供商品給得來素</p>
+                <h3 id="home-supplier-title" class="text-xl font-bold text-brand-dark mb-2">我要賣貨</h3>
+                <p id="home-supplier-desc" class="text-gray-400 text-sm">廠商提供商品給得來素</p>
             </div>
             <!-- 客戶 -->
             <div onclick="startForm('customer')"
                  class="cursor-pointer bg-white rounded-2xl shadow-md hover:shadow-xl transition p-8 border-2 border-transparent hover:border-brand-orange group">
-                <div class="w-16 h-16 mx-auto mb-4 bg-orange-100 rounded-full flex items-center justify-center group-hover:bg-orange-200 transition">
+                <div id="home-customer-icon" class="w-16 h-16 mx-auto mb-4 bg-orange-100 rounded-full flex items-center justify-center group-hover:bg-orange-200 transition text-3xl overflow-hidden">
                     <svg class="w-8 h-8 text-brand-dark" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"></path>
                     </svg>
                 </div>
-                <h3 class="text-xl font-bold text-brand-dark mb-2">我要買貨</h3>
-                <p class="text-gray-400 text-sm">客戶向得來素採購</p>
+                <h3 id="home-customer-title" class="text-xl font-bold text-brand-dark mb-2">我要買貨</h3>
+                <p id="home-customer-desc" class="text-gray-400 text-sm">客戶向得來素採購</p>
             </div>
         </div>
     </div>
@@ -524,6 +524,66 @@
             </div>
             <div id="whitelist-list" class="space-y-2"></div>
 
+            <!-- 首頁卡片設定 -->
+            <div class="mt-8 pt-6 border-t border-gray-200">
+                <h3 class="text-lg font-bold text-brand-dark mb-1">首頁卡片設定</h3>
+                <p class="text-sm text-gray-500 mb-4">編輯首頁「我要賣貨」與「我要買貨」兩張卡片（icon、標題、說明）。icon 留空會自動使用預設圖示。</p>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <!-- 我要賣貨 -->
+                    <div class="bg-brand/10 rounded-xl p-4 border border-brand/30">
+                        <p class="text-xs font-bold text-brand-dark mb-3 uppercase tracking-wider">我要賣貨（廠商入口）</p>
+                        <div class="mb-3">
+                            <label class="block text-xs text-gray-600 mb-1">Icon（emoji、文字或上傳圖片，留空使用預設）</label>
+                            <div class="flex items-center gap-2">
+                                <div id="home-supplier-preview" class="w-14 h-14 rounded-full bg-white border-2 border-brand/40 flex items-center justify-center text-2xl overflow-hidden flex-shrink-0"></div>
+                                <input id="card-home-supplier-icon" type="text" placeholder="（使用預設圖示）" class="flex-1 min-w-0 text-center border border-gray-300 rounded-lg px-2 py-2 focus:ring-2 focus:ring-brand focus:border-brand outline-none" oninput="updateHomeCardPreview('supplier')">
+                                <label class="cursor-pointer px-3 py-2 rounded-lg text-xs font-medium bg-brand-dark text-white hover:bg-gray-700 whitespace-nowrap" title="上傳圖片">
+                                    📷 上傳
+                                    <input type="file" accept="image/*" class="hidden" onchange="uploadHomeCardIcon('supplier', this)">
+                                </label>
+                                <button type="button" onclick="clearHomeCardIcon('supplier')" class="px-2 py-2 rounded-lg text-xs font-medium border border-gray-300 text-gray-500 hover:bg-gray-50 whitespace-nowrap" title="清除回到預設圖示">✕</button>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="block text-xs text-gray-600 mb-1">標題</label>
+                            <input id="card-home-supplier-title" type="text" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-brand focus:border-brand outline-none">
+                        </div>
+                        <div>
+                            <label class="block text-xs text-gray-600 mb-1">說明文字</label>
+                            <textarea id="card-home-supplier-desc" rows="2" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-brand focus:border-brand outline-none"></textarea>
+                        </div>
+                    </div>
+                    <!-- 我要買貨 -->
+                    <div class="bg-orange-50 rounded-xl p-4 border border-orange-200">
+                        <p class="text-xs font-bold text-brand-dark mb-3 uppercase tracking-wider">我要買貨（客戶入口）</p>
+                        <div class="mb-3">
+                            <label class="block text-xs text-gray-600 mb-1">Icon（emoji、文字或上傳圖片，留空使用預設）</label>
+                            <div class="flex items-center gap-2">
+                                <div id="home-customer-preview" class="w-14 h-14 rounded-full bg-white border-2 border-orange-300 flex items-center justify-center text-2xl overflow-hidden flex-shrink-0"></div>
+                                <input id="card-home-customer-icon" type="text" placeholder="（使用預設圖示）" class="flex-1 min-w-0 text-center border border-gray-300 rounded-lg px-2 py-2 focus:ring-2 focus:ring-brand-orange focus:border-brand-orange outline-none" oninput="updateHomeCardPreview('customer')">
+                                <label class="cursor-pointer px-3 py-2 rounded-lg text-xs font-medium bg-brand-dark text-white hover:bg-gray-700 whitespace-nowrap" title="上傳圖片">
+                                    📷 上傳
+                                    <input type="file" accept="image/*" class="hidden" onchange="uploadHomeCardIcon('customer', this)">
+                                </label>
+                                <button type="button" onclick="clearHomeCardIcon('customer')" class="px-2 py-2 rounded-lg text-xs font-medium border border-gray-300 text-gray-500 hover:bg-gray-50 whitespace-nowrap" title="清除回到預設圖示">✕</button>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="block text-xs text-gray-600 mb-1">標題</label>
+                            <input id="card-home-customer-title" type="text" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-brand-orange focus:border-brand-orange outline-none">
+                        </div>
+                        <div>
+                            <label class="block text-xs text-gray-600 mb-1">說明文字</label>
+                            <textarea id="card-home-customer-desc" rows="2" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-brand-orange focus:border-brand-orange outline-none"></textarea>
+                        </div>
+                    </div>
+                </div>
+                <div class="mt-4 flex justify-end gap-2 flex-wrap">
+                    <button onclick="resetHomeCardSettings()" class="text-sm text-gray-500 hover:text-gray-700 border border-gray-300 rounded-lg px-4 py-2">重設為預設</button>
+                    <button onclick="saveHomeCardSettings()" class="px-6 py-2 rounded-lg text-sm font-bold text-brand-dark" style="background: #C3F000;">💾 儲存設定</button>
+                </div>
+            </div>
+
             <!-- 廠商身份卡片設定 -->
             <div class="mt-8 pt-6 border-t border-gray-200">
                 <h3 class="text-lg font-bold text-brand-dark mb-1">廠商身份卡片設定</h3>
@@ -873,6 +933,7 @@ function navigateTo(page) {
     document.getElementById('page-' + page).classList.add('active');
     // 進入「身份選擇頁」時載入自訂設定（icon / 標題 / 說明）
     if (page === 'supplier-entry') loadEntryCardSettings(false);
+    if (page === 'home') loadHomeCardSettings(false);
 }
 
 // ===== Toast 通知 =====
@@ -1506,6 +1567,7 @@ function switchAdminTab(tab) {
         whitelistEl.classList.remove('hidden');
         loadWhitelist();
         loadEntryCardSettings(true); // 把設定填回後台表單
+        loadHomeCardSettings(true);
     } else if (tab === 'product') {
         productEl.classList.remove('hidden');
         loadProducts();
@@ -2189,6 +2251,171 @@ function clearCardIcon(which) {
     cardIconImages[which] = '';
     document.getElementById(`card-${which}-icon`).value = '';
     renderEntryIcon(document.getElementById(`card-${which}-preview`), DEFAULT_ENTRY_CARDS[which].icon);
+}
+
+// ===== 首頁卡片設定（Firestore: contact-settings/home-cards） =====
+// icon 留空 → 使用 HTML 內建 SVG（保留高質感預設）
+const DEFAULT_HOME_CARDS = {
+    supplier: { icon: '', title: '我要賣貨', desc: '廠商提供商品給得來素' },
+    customer: { icon: '', title: '我要買貨', desc: '客戶向得來素採購' }
+};
+let homeCardsCache = null;
+let homeCardIconImages = { supplier: '', customer: '' };
+// 暫存首頁 icon 的預設 SVG，方便清除時還原
+const homeDefaultIconHTML = { supplier: null, customer: null };
+
+function captureHomeDefaultIcons() {
+    if (homeDefaultIconHTML.supplier === null) {
+        const el = document.getElementById('home-supplier-icon');
+        if (el) homeDefaultIconHTML.supplier = el.innerHTML;
+    }
+    if (homeDefaultIconHTML.customer === null) {
+        const el = document.getElementById('home-customer-icon');
+        if (el) homeDefaultIconHTML.customer = el.innerHTML;
+    }
+}
+
+// 套用 icon 到首頁 DOM；icon 為空就還原預設 SVG
+function renderHomeIcon(el, iconValue, which) {
+    if (isImageIcon(iconValue)) {
+        el.innerHTML = `<img src="${escAttr(iconValue)}" alt="icon" class="w-full h-full object-cover">`;
+    } else if (iconValue) {
+        el.textContent = iconValue;
+    } else {
+        // 還原 HTML 預設 SVG
+        if (homeDefaultIconHTML[which]) el.innerHTML = homeDefaultIconHTML[which];
+    }
+}
+
+async function loadHomeCardSettings(fillForm) {
+    captureHomeDefaultIcons();
+    let cards;
+    try {
+        const doc = await db.collection('contact-settings').doc('home-cards').get();
+        cards = doc.exists ? doc.data() : null;
+    } catch (err) {
+        console.warn('讀取首頁卡片設定失敗，使用預設值', err);
+    }
+    cards = cards || DEFAULT_HOME_CARDS;
+    cards = {
+        supplier: { ...DEFAULT_HOME_CARDS.supplier, ...(cards.supplier || {}) },
+        customer: { ...DEFAULT_HOME_CARDS.customer, ...(cards.customer || {}) }
+    };
+    homeCardsCache = cards;
+    // 套用到首頁
+    renderHomeIcon(document.getElementById('home-supplier-icon'), cards.supplier.icon, 'supplier');
+    document.getElementById('home-supplier-title').textContent = cards.supplier.title;
+    document.getElementById('home-supplier-desc').textContent = cards.supplier.desc;
+    renderHomeIcon(document.getElementById('home-customer-icon'), cards.customer.icon, 'customer');
+    document.getElementById('home-customer-title').textContent = cards.customer.title;
+    document.getElementById('home-customer-desc').textContent = cards.customer.desc;
+    // 填回後台表單
+    if (fillForm) {
+        ['supplier', 'customer'].forEach(k => {
+            const isImg = isImageIcon(cards[k].icon);
+            homeCardIconImages[k] = isImg ? cards[k].icon : '';
+            document.getElementById(`card-home-${k}-icon`).value = isImg ? '' : cards[k].icon;
+            document.getElementById(`card-home-${k}-title`).value = cards[k].title;
+            document.getElementById(`card-home-${k}-desc`).value = cards[k].desc;
+            const preview = document.getElementById(`home-${k}-preview`);
+            // 預覽：有 icon 顯示 icon，沒 icon 顯示 HTML 預設 SVG（縮小版）
+            if (cards[k].icon) {
+                renderEntryIcon(preview, cards[k].icon);
+            } else if (homeDefaultIconHTML[k]) {
+                preview.innerHTML = homeDefaultIconHTML[k];
+            }
+        });
+    }
+}
+
+function updateHomeCardPreview(which) {
+    const txt = document.getElementById(`card-home-${which}-icon`).value.trim();
+    const preview = document.getElementById(`home-${which}-preview`);
+    if (txt) {
+        homeCardIconImages[which] = '';
+        renderEntryIcon(preview, txt);
+    } else if (homeCardIconImages[which]) {
+        renderEntryIcon(preview, homeCardIconImages[which]);
+    } else if (homeDefaultIconHTML[which]) {
+        preview.innerHTML = homeDefaultIconHTML[which];
+    }
+}
+
+function uploadHomeCardIcon(which, input) {
+    const file = input.files && input.files[0];
+    if (!file) return;
+    if (!file.type.startsWith('image/')) { showToast('請選擇圖片檔', 'error'); return; }
+    const reader = new FileReader();
+    reader.onload = e => {
+        const img = new Image();
+        img.onload = () => {
+            const SIZE = 128;
+            const canvas = document.createElement('canvas');
+            canvas.width = SIZE; canvas.height = SIZE;
+            const ctx = canvas.getContext('2d');
+            const ratio = Math.max(SIZE / img.width, SIZE / img.height);
+            const w = img.width * ratio, h = img.height * ratio;
+            ctx.drawImage(img, (SIZE - w) / 2, (SIZE - h) / 2, w, h);
+            const dataUrl = canvas.toDataURL('image/png');
+            homeCardIconImages[which] = dataUrl;
+            document.getElementById(`card-home-${which}-icon`).value = '';
+            renderEntryIcon(document.getElementById(`home-${which}-preview`), dataUrl);
+            showToast(`圖片已載入（${Math.round(dataUrl.length / 1024)} KB）`);
+        };
+        img.onerror = () => showToast('圖片讀取失敗', 'error');
+        img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+    input.value = '';
+}
+
+function clearHomeCardIcon(which) {
+    homeCardIconImages[which] = '';
+    document.getElementById(`card-home-${which}-icon`).value = '';
+    const preview = document.getElementById(`home-${which}-preview`);
+    if (homeDefaultIconHTML[which]) preview.innerHTML = homeDefaultIconHTML[which];
+}
+
+async function saveHomeCardSettings() {
+    const pick = k => {
+        const txt = document.getElementById(`card-home-${k}-icon`).value.trim();
+        if (txt) return txt;
+        if (homeCardIconImages[k]) return homeCardIconImages[k];
+        return ''; // 空字串 = 使用預設 SVG
+    };
+    const cards = {
+        supplier: {
+            icon: pick('supplier'),
+            title: document.getElementById('card-home-supplier-title').value.trim() || DEFAULT_HOME_CARDS.supplier.title,
+            desc: document.getElementById('card-home-supplier-desc').value.trim() || DEFAULT_HOME_CARDS.supplier.desc
+        },
+        customer: {
+            icon: pick('customer'),
+            title: document.getElementById('card-home-customer-title').value.trim() || DEFAULT_HOME_CARDS.customer.title,
+            desc: document.getElementById('card-home-customer-desc').value.trim() || DEFAULT_HOME_CARDS.customer.desc
+        }
+    };
+    try {
+        await db.collection('contact-settings').doc('home-cards').set(cards);
+        homeCardsCache = cards;
+        loadHomeCardSettings(false);
+        showToast('首頁卡片設定已儲存');
+    } catch (err) {
+        console.error(err);
+        showToast('儲存失敗：' + (err.message || ''), 'error');
+    }
+}
+
+function resetHomeCardSettings() {
+    if (!confirm('確定要重設為預設值嗎？')) return;
+    ['supplier', 'customer'].forEach(k => {
+        homeCardIconImages[k] = '';
+        document.getElementById(`card-home-${k}-icon`).value = '';
+        document.getElementById(`card-home-${k}-title`).value = DEFAULT_HOME_CARDS[k].title;
+        document.getElementById(`card-home-${k}-desc`).value = DEFAULT_HOME_CARDS[k].desc;
+        const preview = document.getElementById(`home-${k}-preview`);
+        if (homeDefaultIconHTML[k]) preview.innerHTML = homeDefaultIconHTML[k];
+    });
 }
 
 async function saveEntryCardSettings() {
