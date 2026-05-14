@@ -1380,6 +1380,9 @@ document.addEventListener('DOMContentLoaded', function() {
     if (editTaxIdType && editTaxIdInput) {
         editTaxIdType.addEventListener('change', () => applyTaxIdTypeChange(editTaxIdType, editTaxIdInput));
     }
+    // 初始載入首頁＆廠商選擇頁卡片設定（首頁預設 active，navigateTo 不會被呼叫）
+    loadHomeCardSettings(false);
+    loadEntryCardSettings(false);
 });
 
 // ===== 前台：送出表單 =====
