@@ -533,8 +533,16 @@
                     <div class="bg-brand/10 rounded-xl p-4 border border-brand/30">
                         <p class="text-xs font-bold text-brand-dark mb-3 uppercase tracking-wider">第一次提品（新廠商）</p>
                         <div class="mb-3">
-                            <label class="block text-xs text-gray-600 mb-1">Icon（emoji 或文字）</label>
-                            <input id="card-new-icon" type="text" maxlength="4" class="w-20 text-2xl text-center border border-gray-300 rounded-lg px-2 py-2 focus:ring-2 focus:ring-brand focus:border-brand outline-none">
+                            <label class="block text-xs text-gray-600 mb-1">Icon（emoji、文字或上傳圖片）</label>
+                            <div class="flex items-center gap-2">
+                                <div id="card-new-preview" class="w-14 h-14 rounded-full bg-white border-2 border-brand/40 flex items-center justify-center text-2xl overflow-hidden flex-shrink-0">✨</div>
+                                <input id="card-new-icon" type="text" placeholder="emoji 或文字" class="flex-1 min-w-0 text-center border border-gray-300 rounded-lg px-2 py-2 focus:ring-2 focus:ring-brand focus:border-brand outline-none" oninput="updateCardPreview('new')">
+                                <label class="cursor-pointer px-3 py-2 rounded-lg text-xs font-medium bg-brand-dark text-white hover:bg-gray-700 whitespace-nowrap" title="上傳圖片（會自動壓縮成 128×128）">
+                                    📷 上傳
+                                    <input type="file" accept="image/*" class="hidden" onchange="uploadCardIcon('new', this)">
+                                </label>
+                                <button type="button" onclick="clearCardIcon('new')" class="px-2 py-2 rounded-lg text-xs font-medium border border-gray-300 text-gray-500 hover:bg-gray-50 whitespace-nowrap" title="清除圖片">✕</button>
+                            </div>
                         </div>
                         <div class="mb-3">
                             <label class="block text-xs text-gray-600 mb-1">標題</label>
@@ -549,8 +557,16 @@
                     <div class="bg-orange-50 rounded-xl p-4 border border-orange-200">
                         <p class="text-xs font-bold text-brand-dark mb-3 uppercase tracking-wider">既有供應商（舊廠商）</p>
                         <div class="mb-3">
-                            <label class="block text-xs text-gray-600 mb-1">Icon（emoji 或文字）</label>
-                            <input id="card-existing-icon" type="text" maxlength="4" class="w-20 text-2xl text-center border border-gray-300 rounded-lg px-2 py-2 focus:ring-2 focus:ring-brand-orange focus:border-brand-orange outline-none">
+                            <label class="block text-xs text-gray-600 mb-1">Icon（emoji、文字或上傳圖片）</label>
+                            <div class="flex items-center gap-2">
+                                <div id="card-existing-preview" class="w-14 h-14 rounded-full bg-white border-2 border-orange-300 flex items-center justify-center text-2xl overflow-hidden flex-shrink-0">🔄</div>
+                                <input id="card-existing-icon" type="text" placeholder="emoji 或文字" class="flex-1 min-w-0 text-center border border-gray-300 rounded-lg px-2 py-2 focus:ring-2 focus:ring-brand-orange focus:border-brand-orange outline-none" oninput="updateCardPreview('existing')">
+                                <label class="cursor-pointer px-3 py-2 rounded-lg text-xs font-medium bg-brand-dark text-white hover:bg-gray-700 whitespace-nowrap" title="上傳圖片（會自動壓縮成 128×128）">
+                                    📷 上傳
+                                    <input type="file" accept="image/*" class="hidden" onchange="uploadCardIcon('existing', this)">
+                                </label>
+                                <button type="button" onclick="clearCardIcon('existing')" class="px-2 py-2 rounded-lg text-xs font-medium border border-gray-300 text-gray-500 hover:bg-gray-50 whitespace-nowrap" title="清除圖片">✕</button>
+                            </div>
                         </div>
                         <div class="mb-3">
                             <label class="block text-xs text-gray-600 mb-1">標題</label>
@@ -2064,6 +2080,23 @@ const DEFAULT_ENTRY_CARDS = {
 };
 let entryCardsCache = null;
 
+// 已上傳圖片暫存（後台編輯時用，存 base64 dataURL）
+let cardIconImages = { new: '', existing: '' };
+
+// 判斷 icon 是否為圖片（base64 或 http URL）
+function isImageIcon(s) {
+    return typeof s === 'string' && (s.startsWith('data:image/') || s.startsWith('http://') || s.startsWith('https://'));
+}
+
+// 套用 icon 到指定 DOM（前台用）
+function renderEntryIcon(el, iconValue) {
+    if (isImageIcon(iconValue)) {
+        el.innerHTML = `<img src="${escAttr(iconValue)}" alt="icon" class="w-full h-full object-cover">`;
+    } else {
+        el.textContent = iconValue || '';
+    }
+}
+
 async function loadEntryCardSettings(fillForm) {
     let cards;
     try {
@@ -2079,33 +2112,101 @@ async function loadEntryCardSettings(fillForm) {
         existing: { ...DEFAULT_ENTRY_CARDS.existing, ...(cards.existing || {}) }
     };
     entryCardsCache = cards;
-    // 套用到前台 entry 頁
-    document.getElementById('entry-new-icon').textContent = cards.new.icon;
+    // 套用到前台 entry 頁（icon 可能是 emoji/文字或圖片 dataURL）
+    renderEntryIcon(document.getElementById('entry-new-icon'), cards.new.icon);
     document.getElementById('entry-new-title').textContent = cards.new.title;
     document.getElementById('entry-new-desc').textContent = cards.new.desc;
-    document.getElementById('entry-existing-icon').textContent = cards.existing.icon;
+    renderEntryIcon(document.getElementById('entry-existing-icon'), cards.existing.icon);
     document.getElementById('entry-existing-title').textContent = cards.existing.title;
     document.getElementById('entry-existing-desc').textContent = cards.existing.desc;
     // 若要把表單填回後台輸入框
     if (fillForm) {
-        document.getElementById('card-new-icon').value = cards.new.icon;
-        document.getElementById('card-new-title').value = cards.new.title;
-        document.getElementById('card-new-desc').value = cards.new.desc;
-        document.getElementById('card-existing-icon').value = cards.existing.icon;
-        document.getElementById('card-existing-title').value = cards.existing.title;
-        document.getElementById('card-existing-desc').value = cards.existing.desc;
+        ['new', 'existing'].forEach(k => {
+            const isImg = isImageIcon(cards[k].icon);
+            cardIconImages[k] = isImg ? cards[k].icon : '';
+            document.getElementById(`card-${k}-icon`).value = isImg ? '' : cards[k].icon;
+            document.getElementById(`card-${k}-title`).value = cards[k].title;
+            document.getElementById(`card-${k}-desc`).value = cards[k].desc;
+            // 更新預覽圓圈
+            const preview = document.getElementById(`card-${k}-preview`);
+            renderEntryIcon(preview, cards[k].icon);
+        });
     }
 }
 
+// 後台：輸入文字 emoji 時即時更新預覽
+function updateCardPreview(which) {
+    const txt = document.getElementById(`card-${which}-icon`).value.trim();
+    const preview = document.getElementById(`card-${which}-preview`);
+    // 若已上傳圖片但又開始打字，文字會優先（清除圖片）
+    if (txt) {
+        cardIconImages[which] = '';
+        renderEntryIcon(preview, txt);
+    } else {
+        // 文字清空：若有圖片就顯示圖片，否則顯示預設
+        renderEntryIcon(preview, cardIconImages[which] || DEFAULT_ENTRY_CARDS[which].icon);
+    }
+}
+
+// 後台：上傳圖片 → 壓縮成 128×128 → base64 dataURL
+function uploadCardIcon(which, input) {
+    const file = input.files && input.files[0];
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+        showToast('請選擇圖片檔', 'error');
+        return;
+    }
+    const reader = new FileReader();
+    reader.onload = e => {
+        const img = new Image();
+        img.onload = () => {
+            // 壓縮成 128×128 PNG，等比例置中裁切
+            const SIZE = 128;
+            const canvas = document.createElement('canvas');
+            canvas.width = SIZE;
+            canvas.height = SIZE;
+            const ctx = canvas.getContext('2d');
+            const ratio = Math.max(SIZE / img.width, SIZE / img.height);
+            const w = img.width * ratio;
+            const h = img.height * ratio;
+            ctx.drawImage(img, (SIZE - w) / 2, (SIZE - h) / 2, w, h);
+            const dataUrl = canvas.toDataURL('image/png');
+            cardIconImages[which] = dataUrl;
+            // 清空文字輸入，並更新預覽
+            document.getElementById(`card-${which}-icon`).value = '';
+            renderEntryIcon(document.getElementById(`card-${which}-preview`), dataUrl);
+            showToast(`圖片已載入（${Math.round(dataUrl.length / 1024)} KB）`);
+        };
+        img.onerror = () => showToast('圖片讀取失敗', 'error');
+        img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+    input.value = ''; // 清空 input 才能再次選同一檔
+}
+
+// 後台：清除已上傳的圖片，回到 emoji/預設
+function clearCardIcon(which) {
+    cardIconImages[which] = '';
+    document.getElementById(`card-${which}-icon`).value = '';
+    renderEntryIcon(document.getElementById(`card-${which}-preview`), DEFAULT_ENTRY_CARDS[which].icon);
+}
+
 async function saveEntryCardSettings() {
+    // 優先使用上傳的圖片；沒有圖片就使用文字 / emoji；都沒有就回到預設
+    const pickIcon = which => {
+        const txt = document.getElementById(`card-${which}-icon`).value.trim();
+        if (txt) return txt; // 文字 / emoji 優先
+        if (cardIconImages[which]) return cardIconImages[which]; // 圖片
+        return DEFAULT_ENTRY_CARDS[which].icon;
+    };
     const cards = {
         new: {
-            icon: document.getElementById('card-new-icon').value.trim() || DEFAULT_ENTRY_CARDS.new.icon,
+            icon: pickIcon('new'),
             title: document.getElementById('card-new-title').value.trim() || DEFAULT_ENTRY_CARDS.new.title,
             desc: document.getElementById('card-new-desc').value.trim() || DEFAULT_ENTRY_CARDS.new.desc
         },
         existing: {
-            icon: document.getElementById('card-existing-icon').value.trim() || DEFAULT_ENTRY_CARDS.existing.icon,
+            icon: pickIcon('existing'),
             title: document.getElementById('card-existing-title').value.trim() || DEFAULT_ENTRY_CARDS.existing.title,
             desc: document.getElementById('card-existing-desc').value.trim() || DEFAULT_ENTRY_CARDS.existing.desc
         }
