@@ -739,12 +739,15 @@
 
             <!-- 廠商商品清單（編輯彈窗，僅廠商顯示） -->
             <div id="edit-products-wrap" class="hidden mt-6 pt-5 border-t border-gray-200">
-                <div class="flex items-center justify-between mb-3">
+                <div class="flex items-center justify-between mb-3 flex-wrap gap-2">
                     <h4 class="text-base font-bold text-brand-dark flex items-center gap-2">
                         <span>📦</span>
                         <span>商品資料</span>
                         <span id="edit-products-count" class="text-xs font-normal text-gray-400"></span>
                     </h4>
+                    <button type="button" id="edit-products-export-btn" onclick="exportCurrentSupplierProducts()" class="hidden px-3 py-1.5 rounded-lg text-xs font-medium text-white" style="background: #16a34a;" title="匯出此廠商的商品為 ERP 匯入檔（9 欄）">
+                        📥 匯出此廠商商品
+                    </button>
                 </div>
                 <div id="edit-products-list" class="space-y-2"></div>
                 <p id="edit-products-empty" class="hidden text-sm text-gray-400 text-center py-4 bg-gray-50 rounded-lg">此廠商尚未填寫商品資料</p>
@@ -1809,7 +1812,11 @@ function renderEditProducts(products) {
     const list = document.getElementById('edit-products-list');
     const empty = document.getElementById('edit-products-empty');
     const countEl = document.getElementById('edit-products-count');
+    const exportBtn = document.getElementById('edit-products-export-btn');
     countEl.textContent = products.length ? `（共 ${products.length} 項）` : '';
+    // 商品數 > 0 才顯示「匯出此廠商商品」按鈕
+    if (products.length > 0) exportBtn.classList.remove('hidden');
+    else exportBtn.classList.add('hidden');
     if (!products.length) {
         list.innerHTML = '';
         empty.classList.remove('hidden');
@@ -2086,22 +2093,17 @@ function exportFormat(format) {
     doExport(items, format);
 }
 
-// ===== 後台：廠商商品 → ERP 商品匯入檔（9 欄）=====
-function exportSupplierProductsExcel() {
-    if (currentAdminTab !== 'supplier') return;
-    const items = selectedIds.size > 0
-        ? allData.filter(d => selectedIds.has(d.id))
-        : allData;
-    // 展開所有廠商的 products
+// ===== 後台：廠商商品 → ERP 商品匯入檔（9 欄，沿用開團系統格式）=====
+// 共用底層：把任意一組廠商展開成商品列，輸出 XLSX
+function writeProductsExcel(suppliers, fileNameSuffix) {
     const rows = [];
-    items.forEach(s => {
+    suppliers.forEach(s => {
         (s.products || []).forEach(p => rows.push({ supplier: s, product: p }));
     });
     if (!rows.length) {
-        showToast('勾選的廠商尚無任何商品資料', 'error');
-        return;
+        showToast('沒有商品資料可匯出', 'error');
+        return false;
     }
-
     const headers = [
         '貨品編號', '貨品名稱', '規格', '基本單位', '是否計庫存',
         '有效日期', '條碼', '進貨價（含稅）', '末端售價'
@@ -2120,7 +2122,6 @@ function exportSupplierProductsExcel() {
             p.retail || ''
         ]);
     });
-
     const ws = XLSX.utils.aoa_to_sheet(aoa);
     ws['!cols'] = [
         { wch: 14 }, { wch: 28 }, { wch: 16 }, { wch: 10 }, { wch: 10 },
@@ -2131,8 +2132,31 @@ function exportSupplierProductsExcel() {
     // 台灣時間日期（避免 UTC 早上 8:00 前歸到昨天）
     const d = new Date();
     const today = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
-    XLSX.writeFile(wb, `商品資料匯入檔_${today}.xlsx`);
+    const fileName = fileNameSuffix
+        ? `商品資料匯入檔_${fileNameSuffix}_${today}.xlsx`
+        : `商品資料匯入檔_${today}.xlsx`;
+    XLSX.writeFile(wb, fileName);
     showToast(`已匯出 ${rows.length} 項商品`);
+    return true;
+}
+
+// 廠商分頁頂部「商品匯入檔」按鈕：匯出勾選（或全部）廠商的商品
+function exportSupplierProductsExcel() {
+    if (currentAdminTab !== 'supplier') return;
+    const items = selectedIds.size > 0
+        ? allData.filter(d => selectedIds.has(d.id))
+        : allData;
+    if (!items.length) { showToast('沒有資料可匯出', 'error'); return; }
+    writeProductsExcel(items);
+}
+
+// 編輯彈窗的「匯出此廠商商品」按鈕：只匯出當前編輯的廠商
+function exportCurrentSupplierProducts() {
+    const docId = document.getElementById('edit-doc-id').value;
+    const supplier = allData.find(d => d.id === docId);
+    if (!supplier) { showToast('找不到廠商資料', 'error'); return; }
+    const safe = (supplier.shortName || supplier.name || 'supplier').replace(/[\\/:*?"<>|]/g, '');
+    writeProductsExcel([supplier], safe);
 }
 
 // ===== 後台：白名單管理 =====
