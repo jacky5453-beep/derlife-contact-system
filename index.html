@@ -128,15 +128,15 @@
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
             <div onclick="startForm('supplier', 'new')"
                  class="cursor-pointer bg-white rounded-2xl shadow-md hover:shadow-xl transition p-6 sm:p-8 border-2 border-transparent hover:border-brand group">
-                <div class="w-14 h-14 mx-auto mb-3 bg-brand/20 rounded-full flex items-center justify-center group-hover:bg-brand/40 transition text-2xl">✨</div>
-                <h3 class="text-lg font-bold text-brand-dark mb-2 text-center">第一次提品</h3>
-                <p class="text-gray-500 text-sm text-center leading-relaxed">我是新廠商，需要填寫公司基本資料 + 商品資訊</p>
+                <div id="entry-new-icon" class="w-14 h-14 mx-auto mb-3 bg-brand/20 rounded-full flex items-center justify-center group-hover:bg-brand/40 transition text-2xl">✨</div>
+                <h3 id="entry-new-title" class="text-lg font-bold text-brand-dark mb-2 text-center">第一次提品</h3>
+                <p id="entry-new-desc" class="text-gray-500 text-sm text-center leading-relaxed">我是新廠商，需要填寫公司基本資料 + 商品資訊</p>
             </div>
             <div onclick="startForm('supplier', 'existing')"
                  class="cursor-pointer bg-white rounded-2xl shadow-md hover:shadow-xl transition p-6 sm:p-8 border-2 border-transparent hover:border-brand-orange group">
-                <div class="w-14 h-14 mx-auto mb-3 bg-orange-100 rounded-full flex items-center justify-center group-hover:bg-orange-200 transition text-2xl">🔄</div>
-                <h3 class="text-lg font-bold text-brand-dark mb-2 text-center">既有供應商</h3>
-                <p class="text-gray-500 text-sm text-center leading-relaxed">已跟得來素合作過，只需填公司名稱與統編，直接補商品</p>
+                <div id="entry-existing-icon" class="w-14 h-14 mx-auto mb-3 bg-orange-100 rounded-full flex items-center justify-center group-hover:bg-orange-200 transition text-2xl">🔄</div>
+                <h3 id="entry-existing-title" class="text-lg font-bold text-brand-dark mb-2 text-center">既有供應商</h3>
+                <p id="entry-existing-desc" class="text-gray-500 text-sm text-center leading-relaxed">已跟得來素合作過，只需填公司名稱與統編，直接補商品</p>
             </div>
         </div>
     </div>
@@ -523,6 +523,50 @@
                 </button>
             </div>
             <div id="whitelist-list" class="space-y-2"></div>
+
+            <!-- 廠商身份卡片設定 -->
+            <div class="mt-8 pt-6 border-t border-gray-200">
+                <h3 class="text-lg font-bold text-brand-dark mb-1">廠商身份卡片設定</h3>
+                <p class="text-sm text-gray-500 mb-4">編輯前台「我要賣貨」進來後看到的兩張身份選擇卡片（icon、標題、說明文字）。儲存後立即生效。</p>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <!-- 第一次提品 -->
+                    <div class="bg-brand/10 rounded-xl p-4 border border-brand/30">
+                        <p class="text-xs font-bold text-brand-dark mb-3 uppercase tracking-wider">第一次提品（新廠商）</p>
+                        <div class="mb-3">
+                            <label class="block text-xs text-gray-600 mb-1">Icon（emoji 或文字）</label>
+                            <input id="card-new-icon" type="text" maxlength="4" class="w-20 text-2xl text-center border border-gray-300 rounded-lg px-2 py-2 focus:ring-2 focus:ring-brand focus:border-brand outline-none">
+                        </div>
+                        <div class="mb-3">
+                            <label class="block text-xs text-gray-600 mb-1">標題</label>
+                            <input id="card-new-title" type="text" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-brand focus:border-brand outline-none">
+                        </div>
+                        <div>
+                            <label class="block text-xs text-gray-600 mb-1">說明文字</label>
+                            <textarea id="card-new-desc" rows="2" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-brand focus:border-brand outline-none"></textarea>
+                        </div>
+                    </div>
+                    <!-- 既有供應商 -->
+                    <div class="bg-orange-50 rounded-xl p-4 border border-orange-200">
+                        <p class="text-xs font-bold text-brand-dark mb-3 uppercase tracking-wider">既有供應商（舊廠商）</p>
+                        <div class="mb-3">
+                            <label class="block text-xs text-gray-600 mb-1">Icon（emoji 或文字）</label>
+                            <input id="card-existing-icon" type="text" maxlength="4" class="w-20 text-2xl text-center border border-gray-300 rounded-lg px-2 py-2 focus:ring-2 focus:ring-brand-orange focus:border-brand-orange outline-none">
+                        </div>
+                        <div class="mb-3">
+                            <label class="block text-xs text-gray-600 mb-1">標題</label>
+                            <input id="card-existing-title" type="text" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-brand-orange focus:border-brand-orange outline-none">
+                        </div>
+                        <div>
+                            <label class="block text-xs text-gray-600 mb-1">說明文字</label>
+                            <textarea id="card-existing-desc" rows="2" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-brand-orange focus:border-brand-orange outline-none"></textarea>
+                        </div>
+                    </div>
+                </div>
+                <div class="mt-4 flex justify-end gap-2 flex-wrap">
+                    <button onclick="resetEntryCardSettings()" class="text-sm text-gray-500 hover:text-gray-700 border border-gray-300 rounded-lg px-4 py-2">重設為預設</button>
+                    <button onclick="saveEntryCardSettings()" class="px-6 py-2 rounded-lg text-sm font-bold text-brand-dark" style="background: #C3F000;">💾 儲存設定</button>
+                </div>
+            </div>
         </div>
     </div>
 </div>
@@ -811,6 +855,8 @@ let quoteRows = []; // [{productId, qty}]
 function navigateTo(page) {
     document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
     document.getElementById('page-' + page).classList.add('active');
+    // 進入「身份選擇頁」時載入自訂設定（icon / 標題 / 說明）
+    if (page === 'supplier-entry') loadEntryCardSettings(false);
 }
 
 // ===== Toast 通知 =====
@@ -1443,6 +1489,7 @@ function switchAdminTab(tab) {
     if (tab === 'whitelist') {
         whitelistEl.classList.remove('hidden');
         loadWhitelist();
+        loadEntryCardSettings(true); // 把設定填回後台表單
     } else if (tab === 'product') {
         productEl.classList.remove('hidden');
         loadProducts();
@@ -2009,6 +2056,81 @@ const ROLE_BADGE = {
     manager: '<span class="text-xs bg-orange-100 text-orange-700 px-2 py-0.5 rounded font-medium">manager</span>',
     user: '<span class="text-xs bg-gray-200 text-gray-600 px-2 py-0.5 rounded font-medium">user</span>'
 };
+
+// ===== 廠商身份卡片設定（Firestore: contact-settings/supplier-entry） =====
+const DEFAULT_ENTRY_CARDS = {
+    new:      { icon: '✨', title: '第一次提品', desc: '我是新廠商，需要填寫公司基本資料 + 商品資訊' },
+    existing: { icon: '🔄', title: '既有供應商', desc: '已跟得來素合作過，只需填公司名稱與統編，直接補商品' }
+};
+let entryCardsCache = null;
+
+async function loadEntryCardSettings(fillForm) {
+    let cards;
+    try {
+        const doc = await db.collection('contact-settings').doc('supplier-entry').get();
+        cards = doc.exists ? doc.data() : null;
+    } catch (err) {
+        console.warn('讀取身份卡片設定失敗，使用預設值', err);
+    }
+    cards = cards || DEFAULT_ENTRY_CARDS;
+    // 合併預設值（避免某個欄位漏掉導致空白）
+    cards = {
+        new:      { ...DEFAULT_ENTRY_CARDS.new,      ...(cards.new      || {}) },
+        existing: { ...DEFAULT_ENTRY_CARDS.existing, ...(cards.existing || {}) }
+    };
+    entryCardsCache = cards;
+    // 套用到前台 entry 頁
+    document.getElementById('entry-new-icon').textContent = cards.new.icon;
+    document.getElementById('entry-new-title').textContent = cards.new.title;
+    document.getElementById('entry-new-desc').textContent = cards.new.desc;
+    document.getElementById('entry-existing-icon').textContent = cards.existing.icon;
+    document.getElementById('entry-existing-title').textContent = cards.existing.title;
+    document.getElementById('entry-existing-desc').textContent = cards.existing.desc;
+    // 若要把表單填回後台輸入框
+    if (fillForm) {
+        document.getElementById('card-new-icon').value = cards.new.icon;
+        document.getElementById('card-new-title').value = cards.new.title;
+        document.getElementById('card-new-desc').value = cards.new.desc;
+        document.getElementById('card-existing-icon').value = cards.existing.icon;
+        document.getElementById('card-existing-title').value = cards.existing.title;
+        document.getElementById('card-existing-desc').value = cards.existing.desc;
+    }
+}
+
+async function saveEntryCardSettings() {
+    const cards = {
+        new: {
+            icon: document.getElementById('card-new-icon').value.trim() || DEFAULT_ENTRY_CARDS.new.icon,
+            title: document.getElementById('card-new-title').value.trim() || DEFAULT_ENTRY_CARDS.new.title,
+            desc: document.getElementById('card-new-desc').value.trim() || DEFAULT_ENTRY_CARDS.new.desc
+        },
+        existing: {
+            icon: document.getElementById('card-existing-icon').value.trim() || DEFAULT_ENTRY_CARDS.existing.icon,
+            title: document.getElementById('card-existing-title').value.trim() || DEFAULT_ENTRY_CARDS.existing.title,
+            desc: document.getElementById('card-existing-desc').value.trim() || DEFAULT_ENTRY_CARDS.existing.desc
+        }
+    };
+    try {
+        await db.collection('contact-settings').doc('supplier-entry').set(cards);
+        entryCardsCache = cards;
+        // 同步前台 entry 頁顯示
+        loadEntryCardSettings(false);
+        showToast('身份卡片設定已儲存');
+    } catch (err) {
+        console.error(err);
+        showToast('儲存失敗：' + (err.message || ''), 'error');
+    }
+}
+
+function resetEntryCardSettings() {
+    if (!confirm('確定要重設為預設值嗎？')) return;
+    document.getElementById('card-new-icon').value = DEFAULT_ENTRY_CARDS.new.icon;
+    document.getElementById('card-new-title').value = DEFAULT_ENTRY_CARDS.new.title;
+    document.getElementById('card-new-desc').value = DEFAULT_ENTRY_CARDS.new.desc;
+    document.getElementById('card-existing-icon').value = DEFAULT_ENTRY_CARDS.existing.icon;
+    document.getElementById('card-existing-title').value = DEFAULT_ENTRY_CARDS.existing.title;
+    document.getElementById('card-existing-desc').value = DEFAULT_ENTRY_CARDS.existing.desc;
+}
 
 async function loadWhitelist() {
     try {
