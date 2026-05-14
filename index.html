@@ -1383,9 +1383,14 @@ document.addEventListener('DOMContentLoaded', function() {
 async function submitForm(e) {
     e.preventDefault();
     const form = e.target;
-    const btn = document.getElementById('btn-submit');
-    btn.disabled = true;
-    btn.textContent = '送出中...';
+    // 廠商與客戶用不同 submit 按鈕；客戶單頁、廠商有 wizard
+    const btn = currentFormType === 'supplier'
+        ? document.getElementById('btn-submit-supplier')
+        : document.getElementById('btn-submit-customer');
+    if (btn) {
+        btn.disabled = true;
+        btn.textContent = '送出中...';
+    }
 
     try {
         const userNote = form.note.value.trim();
@@ -1428,8 +1433,10 @@ async function submitForm(e) {
         console.error(err);
         showToast('送出失敗，請稍後再試', 'error');
     } finally {
-        btn.disabled = false;
-        btn.textContent = '送出資料';
+        if (btn) {
+            btn.disabled = false;
+            btn.textContent = '送出資料';
+        }
     }
 }
 
