@@ -2272,10 +2272,14 @@ function exportSupplierProductsById(docId) {
 function renderProductDetail(supplier) {
     const products = supplier.products || [];
     if (!products.length) return '<span class="text-xs text-gray-400">無商品資料</span>';
+    const brandName = supplier.shortName || supplier.name || '';
     const rows = products.map((p, i) => `
         <tr class="border-b border-green-100/60">
             <td class="py-1.5 pr-3 text-gray-400">${i + 1}</td>
             <td class="py-1.5 pr-3 font-medium">${escHtml(p.name || '')}</td>
+            <td class="py-1.5 pr-3">
+                <a href="${escAttr(buildCopyGenUrl(p, brandName))}" target="_blank" rel="noopener" class="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-orange-500 hover:bg-orange-600 text-white text-xs font-medium whitespace-nowrap">✍️ 產生文案</a>
+            </td>
             <td class="py-1.5 pr-3">${escHtml(p.spec || '')}</td>
             <td class="py-1.5 pr-3">${escHtml(p.barcode || '')}</td>
             <td class="py-1.5 pr-3">${escHtml(p.expiry || '')}</td>
@@ -2293,6 +2297,7 @@ function renderProductDetail(supplier) {
                     <tr class="text-left text-gray-500 border-b border-green-200">
                         <th class="py-1.5 pr-3">#</th>
                         <th class="py-1.5 pr-3">品名</th>
+                        <th class="py-1.5 pr-3">文案</th>
                         <th class="py-1.5 pr-3">規格</th>
                         <th class="py-1.5 pr-3">條碼</th>
                         <th class="py-1.5 pr-3">有效日期</th>
