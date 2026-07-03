@@ -288,19 +288,6 @@
                         <h3 class="text-lg font-bold text-brand-dark">商品資訊</h3>
                     </div>
                     <p class="text-sm text-gray-500 mb-4">請填寫每項供應的商品詳情。可新增多個商品，每個商品需單獨填寫。若暫時沒有商品資料，可以略過此區塊，後續再補。</p>
-
-                    <!-- 報價單上傳（廠商必填） -->
-                    <div class="mb-6 bg-brand/5 border border-brand/40 rounded-xl p-4">
-                        <label class="block text-sm font-bold text-brand-dark mb-1">📄 報價單上傳 *</label>
-                        <p class="text-xs text-gray-500 mb-3">請上傳貴公司的正式報價單，支援 Word、Excel、PDF 格式（單檔上限 20MB）。此為必填欄位。</p>
-                        <input type="file" id="quotation-file" name="quotationFile"
-                            accept=".doc,.docx,.xls,.xlsx,.pdf,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-                            onchange="onQuotationFileChange(this)"
-                            class="block w-full text-sm text-gray-600 file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-brand-dark file:text-brand hover:file:bg-black file:cursor-pointer cursor-pointer">
-                        <p id="quotation-file-info" class="hidden text-xs text-green-600 mt-2"></p>
-                        <p id="quotation-upload-progress" class="hidden text-xs text-gray-500 mt-2"></p>
-                    </div>
-
                     <div id="products-container" class="space-y-4"></div>
                     <button type="button" onclick="addSupplierProduct()" class="mt-3 w-full py-4 border-2 border-dashed border-gray-300 rounded-xl text-gray-500 hover:border-brand hover:text-brand-dark hover:bg-brand/10 transition flex items-center justify-center gap-2 text-sm font-medium">
                         <span class="text-lg">＋</span> 新增商品
@@ -902,6 +889,81 @@
     </div>
 </div>
 
+<!-- ===== 廠商報價單產生器（含線上簽名） ===== -->
+<div id="modal-supplier-quote" class="fixed inset-0 z-50 hidden">
+    <div class="absolute inset-0 bg-black/40" onclick="closeSupplierQuoteModal()"></div>
+    <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-white rounded-2xl shadow-2xl w-full max-w-3xl max-h-[92vh] overflow-y-auto p-6">
+        <div class="flex items-center justify-between mb-4">
+            <h3 class="text-xl font-bold text-brand-dark">📄 產生報價單</h3>
+            <button onclick="closeSupplierQuoteModal()" class="text-gray-400 hover:text-gray-600">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+            </button>
+        </div>
+
+        <div class="bg-gray-50 rounded-lg p-3 mb-4 text-sm">
+            <p>廠商：<span id="sq-supplier-name" class="font-bold text-brand-dark"></span></p>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
+            <div>
+                <label class="block text-xs text-gray-500 mb-1">報價單編號</label>
+                <input type="text" id="sq-no" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-brand focus:border-brand outline-none">
+            </div>
+            <div>
+                <label class="block text-xs text-gray-500 mb-1">報價日期</label>
+                <input type="text" id="sq-date" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-brand focus:border-brand outline-none">
+            </div>
+        </div>
+
+        <p class="text-sm text-gray-500 mb-2">勾選要報價的商品，並確認數量與單價（單價預設帶入商品報價含稅，可修改）：</p>
+        <div class="overflow-x-auto border border-gray-200 rounded-lg max-h-[40vh]">
+            <table class="w-full text-sm" style="min-width: 560px;">
+                <thead class="bg-gray-100 sticky top-0">
+                    <tr>
+                        <th class="p-2 w-8"></th>
+                        <th class="p-2 text-left">商品名稱（規格）</th>
+                        <th class="p-2 text-right w-20">數量</th>
+                        <th class="p-2 text-right w-28">單價</th>
+                        <th class="p-2 text-right w-28">總計</th>
+                    </tr>
+                </thead>
+                <tbody id="sq-tbody"></tbody>
+            </table>
+        </div>
+        <p id="sq-empty" class="hidden text-center py-4 text-gray-400 text-sm">此廠商尚未有商品資料</p>
+
+        <div class="mt-4 flex flex-col items-end gap-1 text-sm">
+            <label class="inline-flex items-center gap-2 text-gray-600 mb-1">
+                <input type="checkbox" id="sq-add-vat" class="custom-checkbox" checked onchange="recalcSupplierQuote()"> 加 5% 稅金
+            </label>
+            <div class="flex justify-between w-full sm:w-64"><span class="text-gray-500">合計 Subtotal</span><span id="sq-subtotal" class="font-medium">$0</span></div>
+            <div id="sq-vat-row" class="flex justify-between w-full sm:w-64"><span class="text-gray-500">5% 稅金 VAT</span><span id="sq-vat" class="font-medium">$0</span></div>
+            <div class="flex justify-between w-full sm:w-64 text-base"><span class="font-bold text-brand-dark">總計 Total</span><span id="sq-total" class="font-bold text-brand-dark">$0</span></div>
+        </div>
+
+        <div class="mt-4">
+            <label class="block text-sm font-medium text-gray-700 mb-1">📌 報價備註</label>
+            <textarea id="sq-note" rows="2" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-brand focus:border-brand outline-none">1. 若有任何約定條款，請於簽訂本估價單時一併提出。</textarea>
+        </div>
+
+        <!-- 線上簽名（客戶簽章） -->
+        <div class="mt-4">
+            <div class="flex items-center justify-between mb-1">
+                <label class="block text-sm font-medium text-gray-700">✍️ 客戶簽章（線上簽名）</label>
+                <button type="button" onclick="clearSignature()" class="text-xs text-blue-500 hover:text-blue-700">清除重簽</button>
+            </div>
+            <canvas id="sq-signature-canvas" class="w-full border-2 border-dashed border-gray-300 rounded-lg bg-white touch-none" style="height: 160px;"></canvas>
+            <p class="text-xs text-gray-400 mt-1">用滑鼠或手指在框內簽名。簽名後點「產生並下載 PDF」即完成確認。</p>
+        </div>
+
+        <div class="mt-6 flex justify-end gap-3 flex-wrap">
+            <button type="button" onclick="openCompanyInfoModal()" class="px-4 py-2 rounded-lg text-sm font-medium text-gray-600 border border-gray-300 hover:bg-gray-50" title="編輯報價單上的得來素（客戶方）聯絡資訊">⚙️ 客戶方資訊</button>
+            <button type="button" onclick="closeSupplierQuoteModal()" class="px-4 py-2 rounded-lg text-sm font-medium border border-gray-300 text-gray-600 hover:bg-gray-50">取消</button>
+            <button type="button" onclick="generateSupplierQuotePDF()" id="sq-btn-generate" class="px-6 py-2 rounded-lg text-sm font-bold text-brand-dark" style="background: #C3F000;">📄 產生並下載 PDF</button>
+        </div>
+    </div>
+</div>
+
 <script>
 // ===== Firebase 初始化 =====
 const firebaseConfig = {
@@ -1135,62 +1197,11 @@ function removeSupplierProduct(id) {
     if (card) card.remove();
 }
 
-// ===== 報價單上傳（廠商前台）=====
-const QUOTATION_MAX_SIZE = 20 * 1024 * 1024; // 20MB
-const QUOTATION_ALLOWED_EXT = ['doc', 'docx', 'xls', 'xlsx', 'pdf'];
-
+// 檔案大小格式化（報價單存檔等用）
 function fmtFileSize(bytes) {
     if (bytes < 1024) return bytes + ' B';
     if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
     return (bytes / 1024 / 1024).toFixed(2) + ' MB';
-}
-
-// 選檔時做格式／大小驗證並顯示檔名
-function onQuotationFileChange(input) {
-    const info = document.getElementById('quotation-file-info');
-    const file = input.files && input.files[0];
-    info.classList.add('hidden');
-    if (!file) return;
-    const ext = (file.name.split('.').pop() || '').toLowerCase();
-    if (!QUOTATION_ALLOWED_EXT.includes(ext)) {
-        showToast('報價單僅接受 Word、Excel、PDF 檔', 'error');
-        input.value = '';
-        return;
-    }
-    if (file.size > QUOTATION_MAX_SIZE) {
-        showToast('報價單檔案過大（上限 20MB）', 'error');
-        input.value = '';
-        return;
-    }
-    info.textContent = `✓ 已選擇：${file.name}（${fmtFileSize(file.size)}）`;
-    info.classList.remove('hidden');
-}
-
-// 上傳報價單到 Firebase Storage，回傳存進 Firestore 的檔案資訊
-async function uploadQuotationFile(file) {
-    const progress = document.getElementById('quotation-upload-progress');
-    // 產生安全檔名：時間戳 + 隨機碼 + 原檔名（去掉可能有問題的字元）
-    const safeName = file.name.replace(/[^\w.\-一-龥]/g, '_');
-    const path = `contact-quotations/${Date.now()}_${Math.random().toString(36).slice(2, 8)}_${safeName}`;
-    const ref = storage.ref().child(path);
-    return new Promise((resolve, reject) => {
-        const task = ref.put(file, { contentType: file.type || 'application/octet-stream' });
-        progress.classList.remove('hidden');
-        task.on('state_changed',
-            snap => {
-                const pct = snap.totalBytes ? Math.round(snap.bytesTransferred / snap.totalBytes * 100) : 0;
-                progress.textContent = `報價單上傳中… ${pct}%`;
-            },
-            err => { progress.classList.add('hidden'); reject(err); },
-            async () => {
-                try {
-                    const url = await ref.getDownloadURL();
-                    progress.textContent = '報價單上傳完成 ✓';
-                    resolve({ url, path, name: file.name, size: file.size, type: file.type || '', uploadedAt: new Date().toISOString() });
-                } catch (e) { reject(e); }
-            }
-        );
-    });
 }
 
 // 從 DOM 蒐集商品 array（廠商表單）
@@ -1303,14 +1314,6 @@ function startForm(type, mode) {
     supProdContainer.innerHTML = '';
     supplierProductCount = 0;
     if (isSupplier) addSupplierProduct();
-
-    // 重置報價單上傳欄位狀態
-    const qFile = document.getElementById('quotation-file');
-    if (qFile) qFile.value = '';
-    const qInfo = document.getElementById('quotation-file-info');
-    if (qInfo) qInfo.classList.add('hidden');
-    const qProg = document.getElementById('quotation-upload-progress');
-    if (qProg) qProg.classList.add('hidden');
 
     // Wizard：廠商兩步驟、客戶單頁
     const wizardSteps = document.getElementById('wizard-steps');
@@ -1512,26 +1515,14 @@ async function submitForm(e) {
             createdAt: firebase.firestore.FieldValue.serverTimestamp()
         };
 
-        // 廠商表單：附帶商品資料 + 身份標記 + 報價單
+        // 廠商表單：附帶商品資料 + 身份標記
         if (currentFormType === 'supplier') {
-            // 報價單為必填：先驗證再上傳
-            const fileInput = document.getElementById('quotation-file');
-            const file = fileInput && fileInput.files && fileInput.files[0];
-            if (!file) {
-                showToast('請上傳報價單（必填）', 'error');
-                if (btn) { btn.disabled = false; btn.textContent = '送出資料'; }
-                return;
-            }
             data.products = collectSupplierProducts();
             data.submissionType = currentSupplierMode; // 'new' or 'existing'
             if (currentSupplierMode === 'existing') {
                 // 舊廠商自動把備註標上識別前綴，方便後台合併
                 data.note = userNote ? `【既有供應商補商品】${userNote}` : '【既有供應商補商品】';
             }
-            // 上傳報價單到 Storage，把檔案資訊存進 Firestore
-            if (btn) btn.textContent = '上傳報價單中...';
-            data.quotationFile = await uploadQuotationFile(file);
-            if (btn) btn.textContent = '送出中...';
         }
 
         await db.collection(COLLECTIONS[currentFormType]).add(data);
@@ -1914,7 +1905,7 @@ function openEditModal(docId) {
     const prodWrap = document.getElementById('edit-products-wrap');
     if (isSupplier) {
         prodWrap.classList.remove('hidden');
-        renderEditQuotation(item.quotationFile);
+        renderSupplierQuoteSection(docId, item);
         renderEditProducts(item.products || []);
     } else {
         prodWrap.classList.add('hidden');
@@ -1923,29 +1914,34 @@ function openEditModal(docId) {
     document.getElementById('modal-edit').classList.remove('hidden');
 }
 
-// 後台：在編輯彈窗渲染報價單下載區
-function renderEditQuotation(q) {
+// 後台：編輯彈窗的「報價單」區 — 產生報價單按鈕 + 已確認報價下載
+function renderSupplierQuoteSection(docId, item) {
     const wrap = document.getElementById('edit-quotation-wrap');
     if (!wrap) return;
-    if (!q || !q.url) {
-        wrap.innerHTML = `<div class="text-xs text-gray-400 bg-gray-50 rounded-lg px-3 py-2">📄 此廠商未附報價單</div>`;
-        return;
-    }
-    const sizeStr = q.size ? `（${fmtFileSize(q.size)}）` : '';
-    wrap.innerHTML = `
-        <div class="flex items-center justify-between gap-2 bg-brand/5 border border-brand/40 rounded-lg px-3 py-2.5 flex-wrap">
-            <div class="flex items-center gap-2 min-w-0">
-                <span class="text-lg flex-shrink-0">📄</span>
-                <div class="min-w-0">
-                    <p class="text-sm font-medium text-brand-dark truncate">報價單：${escHtml(q.name || '未命名檔案')}</p>
-                    <p class="text-xs text-gray-400">${sizeStr}</p>
+    const canQuote = isManagerOrAbove();
+    const confirmed = item.quotationConfirmed; // { url, no, date, total, signedAt, name }
+    let confirmedHtml = '';
+    if (confirmed && confirmed.url) {
+        confirmedHtml = `
+            <div class="mt-2 flex items-center justify-between gap-2 bg-green-50 border border-green-300 rounded-lg px-3 py-2 flex-wrap">
+                <div class="min-w-0 text-xs text-gray-600">
+                    <span class="font-medium text-green-700">✓ 已確認報價</span>
+                    <span class="ml-1">${escHtml(confirmed.no || '')}</span>
+                    <span class="ml-1">${escHtml(confirmed.date || '')}</span>
+                    ${confirmed.total ? `<span class="ml-1">總計 $${escHtml(String(confirmed.total))}</span>` : ''}
                 </div>
-            </div>
-            <a href="${escAttr(q.url)}" download="${escAttr(q.name || '報價單')}" target="_blank" rel="noopener"
-                class="px-3 py-1.5 rounded-lg text-xs font-medium text-white flex-shrink-0" style="background: #16a34a;">
-                📥 下載報價單
-            </a>
-        </div>`;
+                <a href="${escAttr(confirmed.url)}" download="${escAttr(confirmed.name || '報價單.pdf')}" target="_blank" rel="noopener"
+                    class="px-3 py-1.5 rounded-lg text-xs font-medium text-white flex-shrink-0" style="background: #16a34a;">
+                    📥 下載已簽名報價單
+                </a>
+            </div>`;
+    }
+    wrap.innerHTML = `
+        <div class="flex items-center justify-between gap-2 flex-wrap">
+            <span class="text-xs text-gray-500">📄 依此廠商商品產生報價單，線上簽名確認後可下載留存。</span>
+            ${canQuote ? `<button type="button" onclick="openSupplierQuoteModal('${docId}')" class="px-3 py-1.5 rounded-lg text-xs font-bold text-brand-dark flex-shrink-0" style="background: #C3F000;">📄 產生報價單</button>` : ''}
+        </div>
+        ${confirmedHtml}`;
 }
 
 // 後台：在編輯彈窗渲染商品清單（可編輯，改後由「儲存」一起寫回 Firestore）
@@ -3767,6 +3763,305 @@ async function exportQuotePDF() {
         container.innerHTML = '';
         btn.disabled = false;
         btn.innerHTML = origText;
+    }
+}
+
+// ===================================================================
+// ===== 後台：廠商報價單產生器（含線上簽名） =====
+// ===================================================================
+let sqDocId = null;      // 當前廠商 doc id
+let sqSupplier = null;   // 當前廠商資料
+let sqRows = [];         // [{name, qty, price, selected}]
+let sigCtx = null, sigDrawing = false, sigHasInk = false;
+
+function openSupplierQuoteModal(docId) {
+    const item = allData.find(d => d.id === docId);
+    if (!item) { showToast('找不到廠商資料', 'error'); return; }
+    sqDocId = docId;
+    sqSupplier = item;
+    document.getElementById('sq-supplier-name').textContent = item.name || '';
+
+    // 報價單編號：PV + 今天(YYYYMMDD) + 01（可改）
+    const d = new Date();
+    const ymd = `${d.getFullYear()}${String(d.getMonth()+1).padStart(2,'0')}${String(d.getDate()).padStart(2,'0')}`;
+    document.getElementById('sq-no').value = `PV${ymd}01`;
+    document.getElementById('sq-date').value = `${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')}`;
+    document.getElementById('sq-add-vat').checked = true;
+    document.getElementById('sq-note').value = '1. 若有任何約定條款，請於簽訂本估價單時一併提出。';
+
+    // 商品列：帶入廠商商品，單價預設 = 商品報價含稅(cost)
+    const products = item.products || [];
+    sqRows = products.map(p => ({
+        name: (p.name || '') + (p.spec ? `(${p.spec})` : ''),
+        qty: 1,
+        price: Number(p.cost) || 0,
+        selected: true
+    }));
+    renderSupplierQuoteRows();
+
+    document.getElementById('modal-supplier-quote').classList.remove('hidden');
+    // 等 modal 顯示後再初始化簽名板（拿得到寬度）
+    setTimeout(initSignaturePad, 50);
+}
+
+function closeSupplierQuoteModal() {
+    document.getElementById('modal-supplier-quote').classList.add('hidden');
+    sqDocId = null; sqSupplier = null; sqRows = [];
+}
+
+function renderSupplierQuoteRows() {
+    const tbody = document.getElementById('sq-tbody');
+    const empty = document.getElementById('sq-empty');
+    if (!sqRows.length) {
+        tbody.innerHTML = '';
+        empty.classList.remove('hidden');
+        recalcSupplierQuote();
+        return;
+    }
+    empty.classList.add('hidden');
+    tbody.innerHTML = sqRows.map((r, i) => `
+        <tr class="border-t border-gray-100">
+            <td class="p-2 text-center"><input type="checkbox" class="custom-checkbox" ${r.selected ? 'checked' : ''} onchange="sqRows[${i}].selected=this.checked; recalcSupplierQuote()"></td>
+            <td class="p-2"><input type="text" value="${escAttr(r.name)}" oninput="sqRows[${i}].name=this.value" class="w-full border border-gray-200 rounded px-2 py-1 text-sm"></td>
+            <td class="p-2"><input type="number" min="0" step="1" value="${r.qty}" oninput="sqRows[${i}].qty=parseFloat(this.value)||0; recalcSupplierQuote()" class="w-full border border-gray-200 rounded px-2 py-1 text-sm text-right"></td>
+            <td class="p-2"><input type="number" min="0" step="0.01" value="${r.price}" oninput="sqRows[${i}].price=parseFloat(this.value)||0; recalcSupplierQuote()" class="w-full border border-gray-200 rounded px-2 py-1 text-sm text-right"></td>
+            <td class="p-2 text-right font-medium sq-line-total">$${formatPrice(r.qty * r.price)}</td>
+        </tr>`).join('');
+    recalcSupplierQuote();
+}
+
+function getSupplierQuoteTotals() {
+    const picks = sqRows.filter(r => r.selected);
+    const subtotal = picks.reduce((s, r) => s + (r.qty * r.price), 0);
+    const addVat = document.getElementById('sq-add-vat').checked;
+    const vat = addVat ? Math.round(subtotal * 0.05) : 0;
+    return { picks, subtotal: Math.round(subtotal), vat, total: Math.round(subtotal) + vat, addVat };
+}
+
+function recalcSupplierQuote() {
+    // 更新每列總計
+    document.querySelectorAll('#sq-tbody tr').forEach((tr, i) => {
+        const cell = tr.querySelector('.sq-line-total');
+        if (cell && sqRows[i]) cell.textContent = '$' + formatPrice(sqRows[i].qty * sqRows[i].price);
+    });
+    const t = getSupplierQuoteTotals();
+    document.getElementById('sq-subtotal').textContent = '$' + formatPrice(t.subtotal);
+    document.getElementById('sq-vat').textContent = '$' + formatPrice(t.vat);
+    document.getElementById('sq-total').textContent = '$' + formatPrice(t.total);
+    document.getElementById('sq-vat-row').style.display = t.addVat ? '' : 'none';
+}
+
+// ----- 線上簽名板 -----
+function initSignaturePad() {
+    const canvas = document.getElementById('sq-signature-canvas');
+    if (!canvas) return;
+    // 依 CSS 尺寸設定實際畫布解析度（避免變形、支援 retina）
+    const rect = canvas.getBoundingClientRect();
+    const dpr = window.devicePixelRatio || 1;
+    canvas.width = rect.width * dpr;
+    canvas.height = rect.height * dpr;
+    sigCtx = canvas.getContext('2d');
+    sigCtx.scale(dpr, dpr);
+    sigCtx.lineWidth = 2.2;
+    sigCtx.lineCap = 'round';
+    sigCtx.lineJoin = 'round';
+    sigCtx.strokeStyle = '#1A1A16';
+    sigHasInk = false;
+
+    const pos = e => {
+        const r = canvas.getBoundingClientRect();
+        const p = e.touches ? e.touches[0] : e;
+        return { x: p.clientX - r.left, y: p.clientY - r.top };
+    };
+    const start = e => { e.preventDefault(); sigDrawing = true; const {x,y} = pos(e); sigCtx.beginPath(); sigCtx.moveTo(x, y); };
+    const move = e => { if (!sigDrawing) return; e.preventDefault(); const {x,y} = pos(e); sigCtx.lineTo(x, y); sigCtx.stroke(); sigHasInk = true; };
+    const end = () => { sigDrawing = false; };
+
+    // 先移除舊監聽再綁（避免重開 modal 疊加）
+    canvas.onmousedown = start; canvas.onmousemove = move;
+    canvas.onmouseup = end; canvas.onmouseleave = end;
+    canvas.ontouchstart = start; canvas.ontouchmove = move; canvas.ontouchend = end;
+}
+
+function clearSignature() {
+    const canvas = document.getElementById('sq-signature-canvas');
+    if (sigCtx && canvas) sigCtx.clearRect(0, 0, canvas.width, canvas.height);
+    sigHasInk = false;
+}
+
+function getSignatureDataUrl() {
+    const canvas = document.getElementById('sq-signature-canvas');
+    return (canvas && sigHasInk) ? canvas.toDataURL('image/png') : '';
+}
+
+// ----- 報價單版型（對應紙本格式） -----
+function buildSupplierQuotePdfHtml(model) {
+    const s = model.supplier, b = model.buyer;
+    const infoLine = (label, val) => `<div style="font-size:12px;line-height:1.9;"><span style="color:#666;">${label}：</span>${escAttr(val || '')}</div>`;
+    // 商品列 + 補足空列到最少 8 列，維持紙本表格感
+    const minRows = 8;
+    const dataRows = model.rows.map(r => `
+        <tr>
+            <td style="border:1px solid #333;padding:7px 10px;font-size:12px;">${escAttr(r.name)}</td>
+            <td style="border:1px solid #333;padding:7px 10px;font-size:12px;text-align:center;">${r.qty}</td>
+            <td style="border:1px solid #333;padding:7px 10px;font-size:12px;text-align:right;">${formatPrice(r.price)}</td>
+            <td style="border:1px solid #333;padding:7px 10px;font-size:13px;text-align:right;font-weight:700;">${formatPrice(r.qty * r.price)}</td>
+        </tr>`).join('');
+    let padRows = '';
+    for (let i = model.rows.length; i < minRows; i++) {
+        padRows += `<tr><td style="border:1px solid #333;padding:7px 10px;height:14px;">&nbsp;</td><td style="border:1px solid #333;"></td><td style="border:1px solid #333;"></td><td style="border:1px solid #333;"></td></tr>`;
+    }
+    const sig = model.signatureDataUrl
+        ? `<img src="${model.signatureDataUrl}" style="max-height:60px;max-width:220px;object-fit:contain;">`
+        : '';
+
+    return `
+    <div style="width:760px;padding:40px 44px;background:white;font-family:'Noto Sans TC','Microsoft JhengHei',sans-serif;color:#1A1A16;box-sizing:border-box;">
+        <!-- 抬頭：左供應商名框 + 右編號/日期 -->
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:16px;margin-bottom:26px;">
+            <div style="flex:1;border:1px solid #333;background:#f3f3f3;min-height:56px;display:flex;align-items:center;justify-content:center;padding:10px 14px;">
+                <span style="font-size:17px;font-weight:700;">${escAttr(s.name || '')}</span>
+            </div>
+            <table style="border-collapse:collapse;">
+                <tr><td style="border:1px solid #333;background:#f3f3f3;padding:6px 12px;font-size:12px;font-weight:700;white-space:nowrap;">報價單編號</td><td style="border:1px solid #333;padding:6px 14px;font-size:12px;white-space:nowrap;">${escAttr(model.no)}</td></tr>
+                <tr><td style="border:1px solid #333;background:#f3f3f3;padding:6px 12px;font-size:12px;font-weight:700;white-space:nowrap;">報價日期</td><td style="border:1px solid #333;padding:6px 14px;font-size:12px;white-space:nowrap;">${escAttr(model.date)}</td></tr>
+            </table>
+        </div>
+
+        <!-- 公司資料 / 客戶資料 -->
+        <div style="display:flex;gap:36px;margin-bottom:22px;">
+            <div style="flex:1;">
+                <div style="font-size:14px;font-weight:700;margin-bottom:6px;">公司資料</div>
+                ${infoLine('公司名稱', s.name)}
+                ${infoLine('聯絡人', s.contact)}
+                ${infoLine('聯絡信箱', s.email)}
+                ${infoLine('聯絡電話', s.mobile || s.phone)}
+                ${infoLine('聯絡地址', s.companyAddr || s.invoiceAddr)}
+            </div>
+            <div style="flex:1;">
+                <div style="font-size:14px;font-weight:700;margin-bottom:6px;">客戶資料</div>
+                ${infoLine('公司名稱', b.name)}
+                ${infoLine('聯絡人', b.contact)}
+                ${infoLine('聯絡信箱', b.email)}
+                ${infoLine('聯絡電話', b.phone || b.mobile)}
+                ${infoLine('聯絡地址', b.address)}
+            </div>
+        </div>
+
+        <!-- 商品明細表 -->
+        <table style="width:100%;border-collapse:collapse;margin-bottom:0;">
+            <thead>
+                <tr style="background:#1A1A16;color:#fff;">
+                    <th style="border:1px solid #333;padding:9px 10px;font-size:13px;text-align:center;">商品名稱(規格)</th>
+                    <th style="border:1px solid #333;padding:9px 10px;font-size:13px;text-align:center;width:70px;">數量</th>
+                    <th style="border:1px solid #333;padding:9px 10px;font-size:13px;text-align:center;width:100px;">單價</th>
+                    <th style="border:1px solid #333;padding:9px 10px;font-size:13px;text-align:center;width:110px;">總計</th>
+                </tr>
+            </thead>
+            <tbody>${dataRows}${padRows}</tbody>
+        </table>
+        <!-- 小計 / 稅金 / 總計 -->
+        <table style="width:100%;border-collapse:collapse;margin-bottom:22px;">
+            <tr><td style="border:1px solid #333;padding:7px 10px;font-size:13px;text-align:center;background:#f8f8f8;">合計 Subtotal</td><td style="border:1px solid #333;padding:7px 12px;font-size:13px;text-align:right;width:110px;">${formatPrice(model.subtotal)}</td></tr>
+            ${model.addVat ? `<tr><td style="border:1px solid #333;padding:7px 10px;font-size:13px;text-align:center;background:#f8f8f8;">5%稅金 VAT</td><td style="border:1px solid #333;padding:7px 12px;font-size:13px;text-align:right;">${formatPrice(model.vat)}</td></tr>` : ''}
+            <tr><td style="border:1px solid #333;padding:7px 10px;font-size:13px;text-align:center;background:#f8f8f8;font-weight:700;">總計 Total</td><td style="border:1px solid #333;padding:7px 12px;font-size:14px;text-align:right;font-weight:700;">$${formatPrice(model.total)}</td></tr>
+        </table>
+
+        <!-- 備註 + 簽章 -->
+        <div style="display:flex;gap:24px;align-items:flex-end;">
+            <div style="flex:1;border:1px solid #333;min-height:96px;padding:8px 12px;">
+                <div style="font-size:11px;color:#666;margin-bottom:4px;">報價備註：</div>
+                <div style="font-size:12px;line-height:1.9;white-space:pre-wrap;">${escAttr(model.note || '')}</div>
+            </div>
+            <div style="width:230px;text-align:center;">
+                <div style="height:64px;display:flex;align-items:flex-end;justify-content:center;">${sig}</div>
+                <div style="border-top:1px solid #333;margin-top:4px;padding-top:6px;font-size:12px;">客戶 簽章</div>
+            </div>
+        </div>
+    </div>`;
+}
+
+async function generateSupplierQuotePDF() {
+    const t = getSupplierQuoteTotals();
+    if (!t.picks.length) { showToast('請至少勾選一個商品', 'error'); return; }
+    if (!getSignatureDataUrl()) { showToast('請先在下方簽名再產生 PDF', 'error'); return; }
+    if (typeof html2canvas === 'undefined' || !window.jspdf) { showToast('PDF 套件尚未載入，請稍候重試', 'error'); return; }
+
+    const btn = document.getElementById('sq-btn-generate');
+    const origText = btn.innerHTML;
+    btn.disabled = true; btn.innerHTML = '產生中...';
+
+    const ci = getCompanyInfo();
+    const model = {
+        no: document.getElementById('sq-no').value.trim(),
+        date: document.getElementById('sq-date').value.trim(),
+        supplier: sqSupplier,
+        buyer: { name: '得來素企業有限公司', contact: ci.contact, email: ci.email, phone: ci.phone, mobile: ci.mobile, address: ci.address },
+        rows: t.picks,
+        subtotal: t.subtotal, vat: t.vat, total: t.total, addVat: t.addVat,
+        note: document.getElementById('sq-note').value.trim(),
+        signatureDataUrl: getSignatureDataUrl()
+    };
+
+    const container = document.getElementById('pdf-render-area');
+    container.innerHTML = buildSupplierQuotePdfHtml(model);
+    try {
+        const canvas = await html2canvas(container.firstElementChild, { scale: 2, useCORS: true, backgroundColor: '#ffffff', logging: false });
+        const imgData = canvas.toDataURL('image/png');
+        const { jsPDF } = window.jspdf;
+        const pdf = new jsPDF('p', 'mm', 'a4');
+        const margin = 8, usableWidth = 210 - margin * 2, usableHeight = 297 - margin * 2;
+        const fullImgHeight = usableWidth * (canvas.height / canvas.width);
+        if (fullImgHeight <= usableHeight) {
+            pdf.addImage(imgData, 'PNG', margin, margin, usableWidth, fullImgHeight);
+        } else {
+            let yOffset = 0, pages = 0;
+            while (yOffset < fullImgHeight) {
+                pdf.addImage(imgData, 'PNG', margin, margin - yOffset, usableWidth, fullImgHeight);
+                yOffset += usableHeight; pages++;
+                if (yOffset < fullImgHeight) pdf.addPage();
+                if (pages > 20) break;
+            }
+        }
+        const safeName = (sqSupplier.name || '廠商').replace(/[\\/:*?"<>|]/g, '');
+        const fileName = `報價單_${safeName}_${model.no}.pdf`;
+
+        // 存檔到雲端（管理員登入，走 Storage 預設規則）+ 記錄到廠商 doc
+        await saveSignedQuoteToCloud(pdf, fileName, model);
+
+        pdf.save(fileName);
+        showToast('報價單已產生並存檔');
+        closeSupplierQuoteModal();
+        // 重新載入資料，讓編輯彈窗顯示「已確認報價」
+        if (typeof loadAdminData === 'function') loadAdminData();
+    } catch (err) {
+        console.error(err);
+        showToast('PDF 產生失敗：' + err.message, 'error');
+    } finally {
+        container.innerHTML = '';
+        btn.disabled = false; btn.innerHTML = origText;
+    }
+}
+
+// 簽名版 PDF 上傳 Storage + 廠商 doc 記錄 quotationConfirmed
+async function saveSignedQuoteToCloud(pdf, fileName, model) {
+    try {
+        const blob = pdf.output('blob');
+        const safe = fileName.replace(/[^\w.\-一-龥]/g, '_');
+        const path = `contact-signed-quotations/${sqDocId}/${Date.now()}_${safe}`;
+        const ref = storage.ref().child(path);
+        await ref.put(blob, { contentType: 'application/pdf' });
+        const url = await ref.getDownloadURL();
+        await db.collection(COLLECTIONS.supplier).doc(sqDocId).update({
+            quotationConfirmed: {
+                url, path, name: fileName, no: model.no, date: model.date,
+                total: model.total, signedAt: new Date().toISOString()
+            }
+        });
+    } catch (e) {
+        // 存雲端失敗不擋下載，只提示
+        console.error('存檔雲端失敗', e);
+        showToast('已下載 PDF，但雲端存檔失敗（可稍後重試）', 'error');
     }
 }
 </script>

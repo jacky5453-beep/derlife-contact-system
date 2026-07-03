@@ -1,27 +1,12 @@
 rules_version = '2';
 
 // derlife-audit Storage 安全規則
-// ⚠️ 這份規則是「整個 bucket 一份、整份覆蓋」。目前只有「廠商及客戶資料系統」用到 Storage。
-// 其他路徑沿用 Firebase 預設安全規則（需登入），避免影響未來其他系統。
+// ⚠️ 這份規則是「整個 bucket 一份、整份覆蓋」。
+// 廠商及客戶資料系統的「簽名版報價單」由後台管理員（已登入）上傳到
+// contact-signed-quotations/，走下面的預設「需登入」規則即可，不需要公開寫入。
 service firebase.storage {
   match /b/{bucket}/o {
-
-    // 廠商報價單：前台公開上傳（免登入），限 Word / Excel / PDF、單檔 20MB
-    // 下載交由 getDownloadURL 產生的 token 連結（後台管理員使用）
-    match /contact-quotations/{fileName} {
-      allow read: if request.auth != null;
-      allow write: if request.resource.size < 20 * 1024 * 1024
-        && request.resource.contentType.matches(
-          'application/pdf'
-          + '|application/msword'
-          + '|application/vnd.openxmlformats-officedocument.wordprocessingml.document'
-          + '|application/vnd.ms-excel'
-          + '|application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-          + '|application/octet-stream'
-        );
-    }
-
-    // 其他所有路徑：維持 Firebase 預設安全規則（需登入）
+    // 所有路徑：需登入才能讀寫（Firebase 預設安全規則）
     match /{allPaths=**} {
       allow read, write: if request.auth != null;
     }

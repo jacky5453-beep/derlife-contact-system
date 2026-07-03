@@ -23,13 +23,12 @@ git push origin main
 - 前台：
   - 「我要賣貨」分兩條路徑：第一次提品（新廠商）／既有供應商
   - 兩步驟 wizard：step1 廠商資料 → step2 商品資訊（17 欄位含八大營養標示）
-  - **step2 頂端「📄 報價單上傳」為廠商必填欄位（Word/Excel/PDF、上限 20MB），存到 Firebase Storage `contact-quotations/`**（2026-07-03）
   - 「我要買貨」客戶填表（含勾選想詢價產品）
 - 後台：資料審核、編輯、匯出
   - 廠商列表：「商品數」欄、「身份」徽章（新／既有）
   - **廠商列表點「📦 N ▾」徽章可就地展開商品明細，並提供「匯出商品」「⬇️ 匯出這些商品」快速鈕（免進編輯）**（2026-07-03）
   - **編輯彈窗的商品資料可就地編輯（全欄位 + 八大營養），可新增／移除商品，按「儲存」一起寫回 Firestore**（2026-07-03）
-  - **編輯彈窗顯示「📥 下載報價單」（廠商前台上傳的 Word/Excel/PDF）**（2026-07-03）
+  - **廠商報價單產生器**（編輯彈窗「📄 產生報價單」，manager+）：依廠商商品自動帶入商品名(規格)/數量/單價（預設商品報價含稅、可改），5% 稅金可切換，算合計/稅金/總計；**canvas 線上簽名（客戶簽章）**；html2canvas+jsPDF 產出對應紙本版型的簽名版 PDF → 下載留存 + 上傳 Storage `contact-signed-quotations/{docId}/` + 廠商 doc 記 `quotationConfirmed`；已確認報價可在編輯彈窗再下載（2026-07-03）
   - **每個商品明細底部有「✍️ 一鍵產生文案」按鈕，帶商品資料開啟文案生成系統**（2026-07-03，沿用開團系統的 URL 參數格式）
   - 「帳號權限管理」分頁底下可編輯身份卡片 icon／標題／說明（支援 emoji、文字、上傳圖片）
 - 統一編號支援三種模式：有統編（8碼）／無統編／無需統編
@@ -42,7 +41,7 @@ git push origin main
 - **單廠商商品匯出**（編輯彈窗「匯出此廠商商品」／列表「匯出商品」）自 2026-07-03 起改輸出**完整商品資訊**（25 欄，含成分／營養／文案／目標客群等，檔名 `商品資訊_廠商_日期.xlsx`），供複製到官網建立商品；與上面 9 欄 ERP 匯入檔用途不同
 
 ## Firestore Collections
-- `contact-suppliers` — 廠商資料（含 `products` array、`submissionType: new/existing`）
+- `contact-suppliers` — 廠商資料（含 `products` array、`submissionType: new/existing`、`quotationConfirmed`＝簽名版報價單記錄）
 - `contact-customers` — 客戶資料
 - `contact-products` — 給客戶選擇的產品報價清單
 - `contact-whitelist` — 後台帳號白名單（含 role）
@@ -55,10 +54,11 @@ cd "/Users/jacky/Desktop/claude/claude code/規則主檔"
 ./deploy.sh derlife-audit
 ```
 
-## Storage 規則（2026-07-03 新增，報價單上傳用）
+## Storage 規則（2026-07-03，簽名版報價單存檔用）
 - **檔案：** `storage.rules`（本資料夾）；`firebase.json` 已加 `"storage": {...}`
 - ⚠️ Storage 規則是「整個 bucket 一份、整份覆蓋」。目前 derlife-audit 只有本系統用 Storage。
-  規則只開放 `contact-quotations/**` 公開上傳（限 Word/Excel/PDF、20MB），其餘路徑維持需登入。
+- 規則＝Firebase 預設「需登入才能讀寫」。簽名版報價單由後台管理員（已登入）上傳到
+  `contact-signed-quotations/{docId}/`，走此預設規則即可，**不對外公開**。
 - **部署指令：**
   ```bash
   cd "/Users/jacky/Desktop/claude/claude code/廠商及客戶資料系統"
@@ -89,9 +89,10 @@ cd "/Users/jacky/Desktop/claude/claude code/規則主檔"
   ```
 
 ## 最後部署日期
-2026-07-03（廠商提品同步通知行銷專案群；前台列表商品展開/完整匯出/一鍵文案）
+2026-07-03（後台商品可就地編輯；廠商報價單產生器＋線上簽名＋簽名版 PDF 存檔下載）
 
 ## 更新歷程
+- 2026-07-03 — 後台商品資料改可就地編輯（含八大營養、增／刪商品）；新增**廠商報價單產生器＋canvas 線上簽名**，產出簽名版 PDF 下載留存並存 Storage `contact-signed-quotations/`（廠商 doc 記 `quotationConfirmed`）；同步啟用 Storage（規則為預設需登入）
 - 2026-07-03 — Cloud Functions：廠商提品通知**同步推業務戰情群＋得來素行銷專案群**（行銷群沿用工作管理表的 @derlife_worklog_bot，不必另加機器人）
 - 2026-06-23 — 新增 Cloud Functions：廠商／客戶填完送出自動推 Telegram 到業務戰情群組（共用業務告警 bot 與密鑰）
 - 2026-05-14 — 廠商身份卡片支援上傳圖片當 icon（瀏覽器壓縮成 128×128 PNG → Firestore base64）
