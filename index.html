@@ -1658,17 +1658,27 @@ function renderTable(data) {
         const productCell = isSupplier
             ? `<td class="p-3">
                 ${productCount > 0
-                    ? `<span class="inline-block px-2 py-0.5 rounded text-xs bg-green-100 text-green-700" title="此廠商提供 ${productCount} 項商品">📦 ${productCount}</span>`
+                    ? `<button type="button" onclick="toggleProductDetail('${item.id}')" class="inline-block px-2 py-0.5 rounded text-xs bg-green-100 text-green-700 hover:bg-green-200 cursor-pointer" title="點擊展開查看此廠商的 ${productCount} 項商品">📦 ${productCount} ▾</button>`
                     : `<span class="text-xs text-gray-300">—</span>`}
             </td>`
             : '';
         const quoteBtn = (isCustomer && isManagerOrAbove())
             ? `<button onclick="openQuoteFromRow('${item.id}')" class="text-orange-500 hover:text-orange-700 text-sm font-medium ml-2">報價</button>`
             : '';
+        // 廠商有商品時，操作欄多一顆快速匯出鈕（免進編輯）
+        const exportBtn = (isSupplier && productCount > 0)
+            ? `<button onclick="exportSupplierProductsById('${item.id}')" class="text-green-600 hover:text-green-800 text-sm font-medium ml-2">匯出商品</button>`
+            : '';
         const subTypeBadge = isSupplier
             ? (item.submissionType === 'existing'
                 ? '<span class="inline-block px-1.5 py-0.5 rounded text-[10px] bg-orange-100 text-orange-700 align-middle ml-1" title="既有供應商補商品">既有</span>'
                 : (item.submissionType === 'new' ? '<span class="inline-block px-1.5 py-0.5 rounded text-[10px] bg-brand/30 text-brand-dark align-middle ml-1" title="第一次提品">新</span>' : ''))
+            : '';
+        // 展開列：列出此廠商的商品（預設隱藏，點📦徽章展開）
+        const detailRow = (isSupplier && productCount > 0)
+            ? `<tr id="detail-${item.id}" class="hidden bg-green-50/40">
+                <td colspan="12" class="px-6 py-3">${renderProductDetail(item)}</td>
+            </tr>`
             : '';
         return `<tr class="border-b border-gray-100">
             <td class="p-3"><input type="checkbox" class="custom-checkbox" ${checked} onchange="toggleSelect('${item.id}', this.checked)"></td>
@@ -1686,8 +1696,9 @@ function renderTable(data) {
             <td class="p-3 whitespace-nowrap">
                 <button onclick="openEditModal('${item.id}')" class="text-blue-500 hover:text-blue-700 text-sm font-medium">編輯</button>
                 ${quoteBtn}
+                ${exportBtn}
             </td>
-        </tr>`;
+        </tr>${detailRow}`;
     }).join('');
 
     // 渲染完表格後，補上「已勾選 X 筆」狀態提示
@@ -1826,6 +1837,10 @@ function renderEditProducts(products) {
         return;
     }
     empty.classList.add('hidden');
+    // 取當前廠商簡稱／名稱，帶進文案系統當品牌優勢
+    const editDocId = document.getElementById('edit-doc-id').value;
+    const editSupplier = allData.find(d => d.id === editDocId);
+    const brandName = editSupplier ? (editSupplier.shortName || editSupplier.name || '') : '';
     list.innerHTML = products.map((p, i) => {
         const n = p.nutrition || {};
         const detailRows = [
@@ -1876,10 +1891,34 @@ function renderEditProducts(products) {
                 <div class="px-3 pb-3 bg-white">
                     ${detailRows || '<p class="text-xs text-gray-400 py-2">無詳細資料</p>'}
                     ${nutrHtml}
+                    <div class="mt-3 pt-2 border-t border-gray-100">
+                        <a href="${escAttr(buildCopyGenUrl(p, brandName))}" target="_blank" rel="noopener" class="inline-flex items-center gap-1 px-3 py-1.5 rounded bg-orange-500 hover:bg-orange-600 text-white text-xs font-medium">✍️ 一鍵產生文案</a>
+                        <span class="text-xs text-gray-400 ml-2">帶此商品資料開啟文案生成系統</span>
+                    </div>
                 </div>
             </details>
         `;
     }).join('');
+}
+
+// 組出文案生成系統的連結（帶商品資料當 URL 參數，沿用開團系統的參數格式）
+function buildCopyGenUrl(p, brandName) {
+    const COPY_GEN_URL = 'https://derlife-copy-generator.vercel.app';
+    const params = new URLSearchParams();
+    if (p.name) params.set('productName', p.name);
+    const priceParts = [];
+    if (p.groupPrice) priceParts.push(`團購價 ${p.groupPrice}元`);
+    else if (p.retail) priceParts.push(`售價 ${p.retail}元`);
+    if (p.spec) priceParts.push(p.spec);
+    if (priceParts.length) params.set('priceInfo', priceParts.join(' / '));
+    if (brandName) params.set('brandAdvantage', brandName);
+    // usp 優先用「最大特色」，沒有才用「產品特色文案」
+    if (p.usp) params.set('usp', p.usp);
+    else if (p.copy) params.set('usp', p.copy);
+    if (p.targetAudience) params.set('targetAudience', p.targetAudience);
+    if (p.scene) params.set('scene', p.scene);
+    if (p.texture) params.set('texture', p.texture);
+    return COPY_GEN_URL + '?' + params.toString();
 }
 
 function closeEditModal() {
@@ -2153,13 +2192,132 @@ function exportSupplierProductsExcel() {
     writeProductsExcel(items);
 }
 
+// ===== 完整商品資訊匯出（給建官網商品用，含所有欄位）=====
+// 跟頂部「ERP 匯入檔」的 9 欄格式不同：這裡把廠商填的每一欄都攤平出來
+function writeFullProductsExcel(suppliers, fileNameSuffix) {
+    const rows = [];
+    suppliers.forEach(s => {
+        (s.products || []).forEach(p => rows.push({ supplier: s, product: p }));
+    });
+    if (!rows.length) {
+        showToast('沒有商品資料可匯出', 'error');
+        return false;
+    }
+    const headers = [
+        '廠商', '品名', '規格', '商品成分', '有效日期', '商品條碼',
+        '最少出貨量', '配送物流', '商品報價(含稅)', '末端售價', '團購價', '商品圖片',
+        '產品特色文案', '目標客群', '使用情境', '最大特色', '口感描述',
+        '熱量(Kcal)', '蛋白質(g)', '脂肪(g)', '飽和脂肪(g)', '反式脂肪(g)', '碳水(g)', '糖(g)', '鈉(mg)'
+    ];
+    const aoa = [headers];
+    rows.forEach(({ supplier: s, product: p }) => {
+        const n = p.nutrition || {};
+        aoa.push([
+            s.shortName || s.name || '',
+            p.name || '',
+            p.spec || '',
+            p.ingredients || '',
+            p.expiry || '',
+            p.barcode || '',
+            p.minOrder || '',
+            p.logistics || '',
+            p.cost || '',
+            p.retail || '',
+            p.groupPrice || '',
+            p.imageLink || '',
+            p.copy || '',
+            p.targetAudience || '',
+            p.scene || '',
+            p.usp || '',
+            p.texture || '',
+            n.calories || '',
+            n.protein || '',
+            n.fat || '',
+            n.saturatedFat || '',
+            n.transFat || '',
+            n.carbs || '',
+            n.sugar || '',
+            n.sodium || ''
+        ]);
+    });
+    const ws = XLSX.utils.aoa_to_sheet(aoa);
+    // 成分／文案欄位較寬，其餘給合理寬度
+    ws['!cols'] = [
+        { wch: 14 }, { wch: 26 }, { wch: 14 }, { wch: 50 }, { wch: 14 }, { wch: 16 },
+        { wch: 12 }, { wch: 12 }, { wch: 14 }, { wch: 12 }, { wch: 12 }, { wch: 30 },
+        { wch: 40 }, { wch: 18 }, { wch: 18 }, { wch: 18 }, { wch: 18 },
+        { wch: 10 }, { wch: 10 }, { wch: 10 }, { wch: 12 }, { wch: 12 }, { wch: 10 }, { wch: 10 }, { wch: 10 }
+    ];
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Sheet1');
+    const d = new Date();
+    const today = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+    const fileName = fileNameSuffix
+        ? `商品資訊_${fileNameSuffix}_${today}.xlsx`
+        : `商品資訊_${today}.xlsx`;
+    XLSX.writeFile(wb, fileName);
+    showToast(`已匯出 ${rows.length} 項商品完整資訊`);
+    return true;
+}
+
+// 列表快速匯出：直接依 docId 匯出該廠商商品完整資訊（免進編輯彈窗）
+function exportSupplierProductsById(docId) {
+    const supplier = allData.find(d => d.id === docId);
+    if (!supplier) { showToast('找不到廠商資料', 'error'); return; }
+    const safe = (supplier.shortName || supplier.name || 'supplier').replace(/[\\/:*?"<>|]/g, '');
+    writeFullProductsExcel([supplier], safe);
+}
+
+// 展開列內容：把此廠商的商品列成小表格（僅後台檢視用，含價格）
+function renderProductDetail(supplier) {
+    const products = supplier.products || [];
+    if (!products.length) return '<span class="text-xs text-gray-400">無商品資料</span>';
+    const rows = products.map((p, i) => `
+        <tr class="border-b border-green-100/60">
+            <td class="py-1.5 pr-3 text-gray-400">${i + 1}</td>
+            <td class="py-1.5 pr-3 font-medium">${escHtml(p.name || '')}</td>
+            <td class="py-1.5 pr-3">${escHtml(p.spec || '')}</td>
+            <td class="py-1.5 pr-3">${escHtml(p.barcode || '')}</td>
+            <td class="py-1.5 pr-3">${escHtml(p.expiry || '')}</td>
+            <td class="py-1.5 pr-3 text-right">${p.cost != null && p.cost !== '' ? escHtml(String(p.cost)) : '—'}</td>
+            <td class="py-1.5 pr-3 text-right">${p.retail != null && p.retail !== '' ? escHtml(String(p.retail)) : '—'}</td>
+        </tr>`).join('');
+    return `
+        <div class="flex items-center justify-between mb-2">
+            <span class="text-sm font-medium text-green-800">📦 ${escHtml(supplier.shortName || supplier.name || '')} 這次提報的商品（${products.length} 項）</span>
+            <button onclick="exportSupplierProductsById('${supplier.id}')" class="px-3 py-1 rounded bg-green-600 hover:bg-green-700 text-white text-xs font-medium">⬇️ 匯出這些商品</button>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="w-full text-xs">
+                <thead>
+                    <tr class="text-left text-gray-500 border-b border-green-200">
+                        <th class="py-1.5 pr-3">#</th>
+                        <th class="py-1.5 pr-3">品名</th>
+                        <th class="py-1.5 pr-3">規格</th>
+                        <th class="py-1.5 pr-3">條碼</th>
+                        <th class="py-1.5 pr-3">有效日期</th>
+                        <th class="py-1.5 pr-3 text-right">進貨價(含稅)</th>
+                        <th class="py-1.5 pr-3 text-right">末端售價</th>
+                    </tr>
+                </thead>
+                <tbody>${rows}</tbody>
+            </table>
+        </div>`;
+}
+
+// 點📦徽章：展開／收合商品明細列
+function toggleProductDetail(docId) {
+    const row = document.getElementById('detail-' + docId);
+    if (row) row.classList.toggle('hidden');
+}
+
 // 編輯彈窗的「匯出此廠商商品」按鈕：只匯出當前編輯的廠商
 function exportCurrentSupplierProducts() {
     const docId = document.getElementById('edit-doc-id').value;
     const supplier = allData.find(d => d.id === docId);
     if (!supplier) { showToast('找不到廠商資料', 'error'); return; }
     const safe = (supplier.shortName || supplier.name || 'supplier').replace(/[\\/:*?"<>|]/g, '');
-    writeProductsExcel([supplier], safe);
+    writeFullProductsExcel([supplier], safe);
 }
 
 // ===== 後台：白名單管理 =====
