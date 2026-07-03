@@ -1,0 +1,14 @@
+# 相依套件
+functions/node_modules/
+node_modules/
+
+# 系統檔
+.DS_Store
+
+# 環境變數（密鑰一律走 Secret Manager，不進版控）
+.env
+functions/.env
+
+# 匯入用的 Excel 樣板／暫存檔（本機用，不需進版控）
+*.xls
+*.xlsx

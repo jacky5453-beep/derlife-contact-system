@@ -1,0 +1,12 @@
+{
+  "name": "contact-functions",
+  "description": "廠商及客戶資料系統 — 新資料 Telegram 通知 Cloud Functions",
+  "engines": {
+    "node": "22"
+  },
+  "main": "index.js",
+  "dependencies": {
+    "firebase-functions": "^5.1.0"
+  },
+  "private": true
+}

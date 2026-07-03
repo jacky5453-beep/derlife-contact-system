@@ -58,11 +58,12 @@ cd "/Users/jacky/Desktop/claude/claude code/規則主檔"
 
 - **位置：** `functions/index.js`（Gen2、Node 22、region `asia-east1`、codebase `contact`）
 - **函式：**
-  - `contactSupplierAlert` — 監聽 `contact-suppliers`，新廠商提品／既有廠商補商品都推；訊息含聯絡資訊＋商品清單（品名／規格／成本價）
-  - `contactCustomerAlert` — 監聽 `contact-customers`，新客戶資料推；含客戶類型／聯絡資訊／勾選產品數
-- **bot／群組：** 共用業務戰情告警系統的 bot（@derlife_sales_alert_bot）與群組，**共用同一組 Secret**：
-  - `TELEGRAM_BOT_TOKEN`、`TELEGRAM_CHAT_ID`（Secret Manager，derlife-audit）
-  - ⚠️ 與「業務戰情 Telegram 告警系統」共用此 token／chat_id，任一邊改 token 另一邊要同步
+  - `contactSupplierAlert` — 監聽 `contact-suppliers`，新廠商提品／既有廠商補商品都推；訊息含聯絡資訊＋商品清單（品名／規格／成本價）。**2026-07-03 起：同步推「業務戰情群」＋「得來素行銷專案群」兩個群，讓行銷也知道有人提品要作業**
+  - `contactCustomerAlert` — 監聽 `contact-customers`，新客戶資料推；含客戶類型／聯絡資訊／勾選產品數。只推業務戰情群
+- **bot／群組（兩隻 bot、兩個群）：**
+  - 業務戰情群 → `@derlife_sales_alert_bot`，密鑰 `TELEGRAM_BOT_TOKEN`／`TELEGRAM_CHAT_ID`（共用業務戰情告警系統，⚠️ 任一邊改 token 另一邊要同步）
+  - 行銷專案群 → **沿用工作管理表的** `@derlife_worklog_bot`（該 bot 本來就在「得來素行銷專案群」裡），密鑰 `WORKLOG_TG_TOKEN`／`WORKLOG_TG_CHAT`（共用工作管理表，群 id `-5399731598`）
+  - 兩個群各自獨立送出，其中一個失敗不影響另一個（只記 log）
 - **部署指令：**
   ```bash
   cd "/Users/jacky/Desktop/claude/claude code/廠商及客戶資料系統"
@@ -75,9 +76,10 @@ cd "/Users/jacky/Desktop/claude/claude code/規則主檔"
   ```
 
 ## 最後部署日期
-2026-06-23（新增 Telegram 新資料通知 Cloud Functions）
+2026-07-03（廠商提品同步通知行銷專案群；前台列表商品展開/完整匯出/一鍵文案）
 
 ## 更新歷程
+- 2026-07-03 — Cloud Functions：廠商提品通知**同步推業務戰情群＋得來素行銷專案群**（行銷群沿用工作管理表的 @derlife_worklog_bot，不必另加機器人）
 - 2026-06-23 — 新增 Cloud Functions：廠商／客戶填完送出自動推 Telegram 到業務戰情群組（共用業務告警 bot 與密鑰）
 - 2026-05-14 — 廠商身份卡片支援上傳圖片當 icon（瀏覽器壓縮成 128×128 PNG → Firestore base64）
 - 2026-05-14 — 後台加入「身份卡片設定」（Firestore `contact-settings/supplier-entry`，公開讀／manager+ 寫；同步部署 rules）

@@ -1,0 +1,9 @@
+{
+  "functions": [
+    {
+      "source": "functions",
+      "codebase": "contact",
+      "runtime": "nodejs22"
+    }
+  ]
+}
