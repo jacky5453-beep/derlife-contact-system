@@ -8,6 +8,7 @@
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-storage-compat.js"></script>
     <!-- SheetJS -->
     <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
     <!-- html2canvas + jsPDF（PDF 匯出用） -->
@@ -287,6 +288,19 @@
                         <h3 class="text-lg font-bold text-brand-dark">商品資訊</h3>
                     </div>
                     <p class="text-sm text-gray-500 mb-4">請填寫每項供應的商品詳情。可新增多個商品，每個商品需單獨填寫。若暫時沒有商品資料，可以略過此區塊，後續再補。</p>
+
+                    <!-- 報價單上傳（廠商必填） -->
+                    <div class="mb-6 bg-brand/5 border border-brand/40 rounded-xl p-4">
+                        <label class="block text-sm font-bold text-brand-dark mb-1">📄 報價單上傳 *</label>
+                        <p class="text-xs text-gray-500 mb-3">請上傳貴公司的正式報價單，支援 Word、Excel、PDF 格式（單檔上限 20MB）。此為必填欄位。</p>
+                        <input type="file" id="quotation-file" name="quotationFile"
+                            accept=".doc,.docx,.xls,.xlsx,.pdf,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                            onchange="onQuotationFileChange(this)"
+                            class="block w-full text-sm text-gray-600 file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-brand-dark file:text-brand hover:file:bg-black file:cursor-pointer cursor-pointer">
+                        <p id="quotation-file-info" class="hidden text-xs text-green-600 mt-2"></p>
+                        <p id="quotation-upload-progress" class="hidden text-xs text-gray-500 mt-2"></p>
+                    </div>
+
                     <div id="products-container" class="space-y-4"></div>
                     <button type="button" onclick="addSupplierProduct()" class="mt-3 w-full py-4 border-2 border-dashed border-gray-300 rounded-xl text-gray-500 hover:border-brand hover:text-brand-dark hover:bg-brand/10 transition flex items-center justify-center gap-2 text-sm font-medium">
                         <span class="text-lg">＋</span> 新增商品
@@ -749,8 +763,14 @@
                         📥 匯出此廠商商品
                     </button>
                 </div>
+                <!-- 報價單下載 -->
+                <div id="edit-quotation-wrap" class="mb-4"></div>
                 <div id="edit-products-list" class="space-y-2"></div>
                 <p id="edit-products-empty" class="hidden text-sm text-gray-400 text-center py-4 bg-gray-50 rounded-lg">此廠商尚未填寫商品資料</p>
+                <button type="button" onclick="addEditProduct()" class="mt-3 w-full py-2.5 border-2 border-dashed border-gray-300 rounded-lg text-gray-500 hover:border-brand hover:text-brand-dark hover:bg-brand/10 transition flex items-center justify-center gap-2 text-sm font-medium">
+                    <span class="text-lg">＋</span> 新增商品
+                </button>
+                <p class="text-xs text-gray-400 mt-2">💡 商品資料修改後，請按下方「儲存」一起存檔。</p>
             </div>
 
             <div class="mt-6 flex justify-end gap-3 flex-wrap">
@@ -902,6 +922,7 @@ try {
 }
 const auth = firebase.auth();
 const db = firebase.firestore();
+const storage = firebase.storage();
 const provider = new firebase.auth.GoogleAuthProvider();
 
 // ===== 全域狀態 =====
@@ -926,6 +947,8 @@ const COLLECTIONS = {
 
 // 產品快取
 let allProducts = [];
+// 編輯彈窗當前廠商品牌名（帶進文案系統）
+let currentEditBrandName = '';
 // 報價單暫存：當前客戶資料
 let quoteCustomer = null;
 let quoteRows = []; // [{productId, qty}]
@@ -1112,6 +1135,64 @@ function removeSupplierProduct(id) {
     if (card) card.remove();
 }
 
+// ===== 報價單上傳（廠商前台）=====
+const QUOTATION_MAX_SIZE = 20 * 1024 * 1024; // 20MB
+const QUOTATION_ALLOWED_EXT = ['doc', 'docx', 'xls', 'xlsx', 'pdf'];
+
+function fmtFileSize(bytes) {
+    if (bytes < 1024) return bytes + ' B';
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+    return (bytes / 1024 / 1024).toFixed(2) + ' MB';
+}
+
+// 選檔時做格式／大小驗證並顯示檔名
+function onQuotationFileChange(input) {
+    const info = document.getElementById('quotation-file-info');
+    const file = input.files && input.files[0];
+    info.classList.add('hidden');
+    if (!file) return;
+    const ext = (file.name.split('.').pop() || '').toLowerCase();
+    if (!QUOTATION_ALLOWED_EXT.includes(ext)) {
+        showToast('報價單僅接受 Word、Excel、PDF 檔', 'error');
+        input.value = '';
+        return;
+    }
+    if (file.size > QUOTATION_MAX_SIZE) {
+        showToast('報價單檔案過大（上限 20MB）', 'error');
+        input.value = '';
+        return;
+    }
+    info.textContent = `✓ 已選擇：${file.name}（${fmtFileSize(file.size)}）`;
+    info.classList.remove('hidden');
+}
+
+// 上傳報價單到 Firebase Storage，回傳存進 Firestore 的檔案資訊
+async function uploadQuotationFile(file) {
+    const progress = document.getElementById('quotation-upload-progress');
+    // 產生安全檔名：時間戳 + 隨機碼 + 原檔名（去掉可能有問題的字元）
+    const safeName = file.name.replace(/[^\w.\-一-龥]/g, '_');
+    const path = `contact-quotations/${Date.now()}_${Math.random().toString(36).slice(2, 8)}_${safeName}`;
+    const ref = storage.ref().child(path);
+    return new Promise((resolve, reject) => {
+        const task = ref.put(file, { contentType: file.type || 'application/octet-stream' });
+        progress.classList.remove('hidden');
+        task.on('state_changed',
+            snap => {
+                const pct = snap.totalBytes ? Math.round(snap.bytesTransferred / snap.totalBytes * 100) : 0;
+                progress.textContent = `報價單上傳中… ${pct}%`;
+            },
+            err => { progress.classList.add('hidden'); reject(err); },
+            async () => {
+                try {
+                    const url = await ref.getDownloadURL();
+                    progress.textContent = '報價單上傳完成 ✓';
+                    resolve({ url, path, name: file.name, size: file.size, type: file.type || '', uploadedAt: new Date().toISOString() });
+                } catch (e) { reject(e); }
+            }
+        );
+    });
+}
+
 // 從 DOM 蒐集商品 array（廠商表單）
 function collectSupplierProducts() {
     const list = [];
@@ -1222,6 +1303,14 @@ function startForm(type, mode) {
     supProdContainer.innerHTML = '';
     supplierProductCount = 0;
     if (isSupplier) addSupplierProduct();
+
+    // 重置報價單上傳欄位狀態
+    const qFile = document.getElementById('quotation-file');
+    if (qFile) qFile.value = '';
+    const qInfo = document.getElementById('quotation-file-info');
+    if (qInfo) qInfo.classList.add('hidden');
+    const qProg = document.getElementById('quotation-upload-progress');
+    if (qProg) qProg.classList.add('hidden');
 
     // Wizard：廠商兩步驟、客戶單頁
     const wizardSteps = document.getElementById('wizard-steps');
@@ -1423,14 +1512,26 @@ async function submitForm(e) {
             createdAt: firebase.firestore.FieldValue.serverTimestamp()
         };
 
-        // 廠商表單：附帶商品資料 + 身份標記
+        // 廠商表單：附帶商品資料 + 身份標記 + 報價單
         if (currentFormType === 'supplier') {
+            // 報價單為必填：先驗證再上傳
+            const fileInput = document.getElementById('quotation-file');
+            const file = fileInput && fileInput.files && fileInput.files[0];
+            if (!file) {
+                showToast('請上傳報價單（必填）', 'error');
+                if (btn) { btn.disabled = false; btn.textContent = '送出資料'; }
+                return;
+            }
             data.products = collectSupplierProducts();
             data.submissionType = currentSupplierMode; // 'new' or 'existing'
             if (currentSupplierMode === 'existing') {
                 // 舊廠商自動把備註標上識別前綴，方便後台合併
                 data.note = userNote ? `【既有供應商補商品】${userNote}` : '【既有供應商補商品】';
             }
+            // 上傳報價單到 Storage，把檔案資訊存進 Firestore
+            if (btn) btn.textContent = '上傳報價單中...';
+            data.quotationFile = await uploadQuotationFile(file);
+            if (btn) btn.textContent = '送出中...';
         }
 
         await db.collection(COLLECTIONS[currentFormType]).add(data);
@@ -1809,10 +1910,11 @@ function openEditModal(docId) {
     document.getElementById('edit-email').value = item.email || '';
     document.getElementById('edit-note').value = item.note || '';
 
-    // 廠商商品清單（唯讀預覽）
+    // 廠商報價單 + 商品清單（可編輯）
     const prodWrap = document.getElementById('edit-products-wrap');
     if (isSupplier) {
         prodWrap.classList.remove('hidden');
+        renderEditQuotation(item.quotationFile);
         renderEditProducts(item.products || []);
     } else {
         prodWrap.classList.add('hidden');
@@ -1821,7 +1923,32 @@ function openEditModal(docId) {
     document.getElementById('modal-edit').classList.remove('hidden');
 }
 
-// 後台：在編輯彈窗渲染商品清單（唯讀，每筆可展開看完整資訊）
+// 後台：在編輯彈窗渲染報價單下載區
+function renderEditQuotation(q) {
+    const wrap = document.getElementById('edit-quotation-wrap');
+    if (!wrap) return;
+    if (!q || !q.url) {
+        wrap.innerHTML = `<div class="text-xs text-gray-400 bg-gray-50 rounded-lg px-3 py-2">📄 此廠商未附報價單</div>`;
+        return;
+    }
+    const sizeStr = q.size ? `（${fmtFileSize(q.size)}）` : '';
+    wrap.innerHTML = `
+        <div class="flex items-center justify-between gap-2 bg-brand/5 border border-brand/40 rounded-lg px-3 py-2.5 flex-wrap">
+            <div class="flex items-center gap-2 min-w-0">
+                <span class="text-lg flex-shrink-0">📄</span>
+                <div class="min-w-0">
+                    <p class="text-sm font-medium text-brand-dark truncate">報價單：${escHtml(q.name || '未命名檔案')}</p>
+                    <p class="text-xs text-gray-400">${sizeStr}</p>
+                </div>
+            </div>
+            <a href="${escAttr(q.url)}" download="${escAttr(q.name || '報價單')}" target="_blank" rel="noopener"
+                class="px-3 py-1.5 rounded-lg text-xs font-medium text-white flex-shrink-0" style="background: #16a34a;">
+                📥 下載報價單
+            </a>
+        </div>`;
+}
+
+// 後台：在編輯彈窗渲染商品清單（可編輯，改後由「儲存」一起寫回 Firestore）
 function renderEditProducts(products) {
     const list = document.getElementById('edit-products-list');
     const empty = document.getElementById('edit-products-empty');
@@ -1831,74 +1958,140 @@ function renderEditProducts(products) {
     // 商品數 > 0 才顯示「匯出此廠商商品」按鈕
     if (products.length > 0) exportBtn.classList.remove('hidden');
     else exportBtn.classList.add('hidden');
-    if (!products.length) {
-        list.innerHTML = '';
-        empty.classList.remove('hidden');
-        return;
+    // 記住當前廠商簡稱／名稱，帶進文案系統當品牌優勢
+    const editSupplier = allData.find(d => d.id === document.getElementById('edit-doc-id').value);
+    currentEditBrandName = editSupplier ? (editSupplier.shortName || editSupplier.name || '') : '';
+    list.innerHTML = products.map((p, i) => buildEditProductCard(p, i)).join('');
+    // 空狀態提示：沒有商品時仍顯示「新增商品」按鈕，故不再用整段隱藏
+    empty.classList.toggle('hidden', products.length > 0);
+}
+
+// 小工具：產生一列可編輯欄位
+function epField(label, key, val, opts) {
+    opts = opts || {};
+    const cls = opts.full ? 'sm:col-span-2' : '';
+    const type = opts.type || 'text';
+    if (opts.textarea) {
+        return `<div class="${cls}"><label class="block text-xs text-gray-500 mb-1">${label}</label>
+            <textarea data-ekey="${key}" rows="2" class="w-full border border-gray-300 rounded-lg px-2 py-1.5 text-sm focus:ring-2 focus:ring-brand focus:border-brand outline-none">${escHtml(val || '')}</textarea></div>`;
     }
-    empty.classList.add('hidden');
-    // 取當前廠商簡稱／名稱，帶進文案系統當品牌優勢
-    const editDocId = document.getElementById('edit-doc-id').value;
-    const editSupplier = allData.find(d => d.id === editDocId);
-    const brandName = editSupplier ? (editSupplier.shortName || editSupplier.name || '') : '';
-    list.innerHTML = products.map((p, i) => {
-        const n = p.nutrition || {};
-        const detailRows = [
-            ['商品成分', p.ingredients],
-            ['有效日期', p.expiry],
-            ['商品條碼', p.barcode],
-            ['最少出貨量', p.minOrder],
-            ['配送物流', p.logistics],
-            ['商品報價(含稅)', p.cost ? `NT$ ${p.cost}` : ''],
-            ['末端售價', p.retail ? `NT$ ${p.retail}` : ''],
-            ['團購價', p.groupPrice ? `NT$ ${p.groupPrice}` : ''],
-            ['商品圖片', p.imageLink ? `<a href="${escAttr(p.imageLink)}" target="_blank" class="text-blue-500 hover:underline break-all">${escHtml(p.imageLink)}</a>` : ''],
-            ['產品特色文案', p.copy],
-            ['目標客群', p.targetAudience],
-            ['使用情境', p.scene],
-            ['最大特色', p.usp],
-            ['口感描述', p.texture]
-        ].filter(([, v]) => v).map(([k, v]) => `
-            <div class="flex flex-col sm:flex-row sm:items-start gap-1 py-1.5 border-b border-gray-100 last:border-b-0">
-                <span class="text-xs text-gray-500 w-28 flex-shrink-0">${k}</span>
-                <span class="text-sm text-gray-700 flex-1 break-words">${k === '商品圖片' ? v : escHtml(v)}</span>
+    return `<div class="${cls}"><label class="block text-xs text-gray-500 mb-1">${label}</label>
+        <input type="${type}" data-ekey="${key}" value="${escAttr(val === 0 ? '' : (val || ''))}" class="w-full border border-gray-300 rounded-lg px-2 py-1.5 text-sm focus:ring-2 focus:ring-brand focus:border-brand outline-none"></div>`;
+}
+
+// 小工具：營養標示的一格數字輸入
+function epNutr(label, key, val, unit) {
+    return `<div class="flex items-center gap-1"><span class="text-gray-500 flex-shrink-0">${label}</span>
+        <input type="number" step="0.1" data-enutr="${key}" value="${val || 0}" class="w-16 border border-gray-300 rounded px-1.5 py-1 text-right">
+        <span class="text-gray-400 flex-shrink-0">${unit}</span></div>`;
+}
+
+// 產生一張可編輯的商品卡
+function buildEditProductCard(p, i) {
+    p = p || {};
+    const n = p.nutrition || {};
+    return `
+        <details class="edit-product-card border border-gray-200 rounded-lg bg-gray-50 group" open>
+            <summary class="cursor-pointer px-3 py-2 flex items-center justify-between gap-2 list-none">
+                <div class="flex items-center gap-2 min-w-0 flex-1">
+                    <span class="ep-index inline-flex items-center justify-center w-6 h-6 rounded bg-brand-dark text-brand text-xs font-bold flex-shrink-0">${i + 1}</span>
+                    <span class="font-medium text-sm text-brand-dark truncate">${escHtml(p.name || '（未命名商品）')}</span>
+                    <span class="text-xs text-gray-400 truncate hidden sm:inline">${escHtml(p.spec || '')}</span>
+                </div>
+                <span class="text-xs text-gray-400 group-open:rotate-180 transition-transform flex-shrink-0">▼</span>
+            </summary>
+            <div class="px-3 pb-3 bg-white">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-2">
+                    ${epField('商品品名', 'name', p.name, {full: true})}
+                    ${epField('商品成分', 'ingredients', p.ingredients, {full: true, textarea: true})}
+                    ${epField('商品規格', 'spec', p.spec)}
+                    ${epField('商品條碼', 'barcode', p.barcode)}
+                    ${epField('有效日期', 'expiry', p.expiry)}
+                    ${epField('最少出貨量', 'minOrder', p.minOrder)}
+                    ${epField('配送物流', 'logistics', p.logistics, {full: true})}
+                    ${epField('商品報價(含稅) NT$', 'cost', p.cost, {type: 'number'})}
+                    ${epField('末端售價 NT$', 'retail', p.retail, {type: 'number'})}
+                    ${epField('團購價 NT$', 'groupPrice', p.groupPrice, {type: 'number'})}
+                    ${epField('商品圖片連結', 'imageLink', p.imageLink, {full: true})}
+                    ${epField('產品特色文案', 'copy', p.copy, {full: true, textarea: true})}
+                    ${epField('目標客群', 'targetAudience', p.targetAudience)}
+                    ${epField('使用情境', 'scene', p.scene)}
+                    ${epField('最大特色', 'usp', p.usp)}
+                    ${epField('口感描述', 'texture', p.texture)}
+                </div>
+                <div class="mt-3 pt-2 border-t border-gray-100">
+                    <p class="text-xs text-gray-500 mb-1.5">八大營養標示（每100g/mL）</p>
+                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-x-3 gap-y-1.5 text-xs">
+                        ${epNutr('每份量', 'servingSize', n.servingSize, 'g/mL')}
+                        ${epNutr('本包裝含', 'servingsPerContainer', n.servingsPerContainer, '份')}
+                        ${epNutr('熱量', 'calories', n.calories, 'Kcal')}
+                        ${epNutr('蛋白質', 'protein', n.protein, 'g')}
+                        ${epNutr('脂肪', 'fat', n.fat, 'g')}
+                        ${epNutr('飽和脂肪', 'saturatedFat', n.saturatedFat, 'g')}
+                        ${epNutr('反式脂肪', 'transFat', n.transFat, 'g')}
+                        ${epNutr('碳水', 'carbs', n.carbs, 'g')}
+                        ${epNutr('糖', 'sugar', n.sugar, 'g')}
+                        ${epNutr('鈉', 'sodium', n.sodium, 'mg')}
+                    </div>
+                </div>
+                <div class="mt-3 pt-2 border-t border-gray-100 flex items-center justify-between gap-2 flex-wrap">
+                    <a href="${escAttr(buildCopyGenUrl(p, currentEditBrandName || ''))}" target="_blank" rel="noopener" class="inline-flex items-center gap-1 px-3 py-1.5 rounded bg-orange-500 hover:bg-orange-600 text-white text-xs font-medium">✍️ 一鍵產生文案</a>
+                    <button type="button" onclick="removeEditProductCard(this)" class="text-xs text-gray-400 border border-gray-200 rounded-md px-3 py-1 hover:text-red-500 hover:border-red-300 hover:bg-red-50 transition">✕ 移除此商品</button>
+                </div>
             </div>
-        `).join('');
-        const nutrHtml = (n && (n.calories || n.protein || n.fat)) ? `
-            <div class="mt-2 pt-2 border-t border-gray-100">
-                <p class="text-xs text-gray-500 mb-1">八大營養標示（每100g/mL）</p>
-                <div class="grid grid-cols-2 sm:grid-cols-4 gap-x-3 gap-y-0.5 text-xs text-gray-600">
-                    <div>熱量 <span class="font-medium">${n.calories || 0}</span> Kcal</div>
-                    <div>蛋白質 <span class="font-medium">${n.protein || 0}</span> g</div>
-                    <div>脂肪 <span class="font-medium">${n.fat || 0}</span> g</div>
-                    <div>飽和脂肪 <span class="font-medium">${n.saturatedFat || 0}</span> g</div>
-                    <div>反式脂肪 <span class="font-medium">${n.transFat || 0}</span> g</div>
-                    <div>碳水 <span class="font-medium">${n.carbs || 0}</span> g</div>
-                    <div>糖 <span class="font-medium">${n.sugar || 0}</span> g</div>
-                    <div>鈉 <span class="font-medium">${n.sodium || 0}</span> mg</div>
-                </div>
-            </div>` : '';
-        return `
-            <details class="border border-gray-200 rounded-lg bg-gray-50 group">
-                <summary class="cursor-pointer px-3 py-2 flex items-center justify-between gap-2 list-none">
-                    <div class="flex items-center gap-2 min-w-0 flex-1">
-                        <span class="inline-flex items-center justify-center w-6 h-6 rounded bg-brand-dark text-brand text-xs font-bold flex-shrink-0">${i + 1}</span>
-                        <span class="font-medium text-sm text-brand-dark truncate">${escHtml(p.name || '（未命名商品）')}</span>
-                        <span class="text-xs text-gray-400 truncate hidden sm:inline">${escHtml(p.spec || '')}</span>
-                    </div>
-                    <span class="text-xs text-gray-400 group-open:rotate-180 transition-transform flex-shrink-0">▼</span>
-                </summary>
-                <div class="px-3 pb-3 bg-white">
-                    ${detailRows || '<p class="text-xs text-gray-400 py-2">無詳細資料</p>'}
-                    ${nutrHtml}
-                    <div class="mt-3 pt-2 border-t border-gray-100">
-                        <a href="${escAttr(buildCopyGenUrl(p, brandName))}" target="_blank" rel="noopener" class="inline-flex items-center gap-1 px-3 py-1.5 rounded bg-orange-500 hover:bg-orange-600 text-white text-xs font-medium">✍️ 一鍵產生文案</a>
-                        <span class="text-xs text-gray-400 ml-2">帶此商品資料開啟文案生成系統</span>
-                    </div>
-                </div>
-            </details>
-        `;
-    }).join('');
+        </details>
+    `;
+}
+
+// 後台：新增一張空白商品卡
+function addEditProduct() {
+    const list = document.getElementById('edit-products-list');
+    const idx = list.querySelectorAll('.edit-product-card').length;
+    list.insertAdjacentHTML('beforeend', buildEditProductCard({}, idx));
+    document.getElementById('edit-products-empty').classList.add('hidden');
+    refreshEditProductIndexes();
+}
+
+// 後台：移除一張商品卡
+function removeEditProductCard(btn) {
+    const card = btn.closest('.edit-product-card');
+    if (card) card.remove();
+    refreshEditProductIndexes();
+    const list = document.getElementById('edit-products-list');
+    const empty = document.getElementById('edit-products-empty');
+    if (!list.querySelectorAll('.edit-product-card').length) empty.classList.remove('hidden');
+}
+
+// 重新編號商品卡的序號
+function refreshEditProductIndexes() {
+    document.querySelectorAll('#edit-products-list .edit-product-card').forEach((card, i) => {
+        const badge = card.querySelector('.ep-index');
+        if (badge) badge.textContent = i + 1;
+    });
+}
+
+// 後台：從編輯彈窗的商品卡收集回商品陣列
+function collectEditProducts() {
+    const cards = document.querySelectorAll('#edit-products-list .edit-product-card');
+    const numKeys = ['cost', 'retail', 'groupPrice'];
+    return Array.from(cards).map(card => {
+        const g = key => {
+            const el = card.querySelector(`[data-ekey="${key}"]`);
+            return el ? el.value.trim() : '';
+        };
+        const nutrition = {};
+        card.querySelectorAll('[data-enutr]').forEach(el => {
+            nutrition[el.dataset.enutr] = parseFloat(el.value) || 0;
+        });
+        const p = {
+            name: g('name'), ingredients: g('ingredients'), spec: g('spec'), barcode: g('barcode'),
+            expiry: g('expiry'), minOrder: g('minOrder'), logistics: g('logistics'),
+            imageLink: g('imageLink'), copy: g('copy'), targetAudience: g('targetAudience'),
+            scene: g('scene'), usp: g('usp'), texture: g('texture'), nutrition
+        };
+        numKeys.forEach(k => { p[k] = Number(g(k)) || 0; });
+        return p;
+    }).filter(p => p.name || p.ingredients || p.spec || p.barcode || p.cost > 0);
 }
 
 // 組出文案生成系統的連結（帶商品資料當 URL 參數，沿用開團系統的參數格式）
@@ -1953,6 +2146,11 @@ async function saveEdit(e) {
         note: document.getElementById('edit-note').value.trim(),
         updatedAt: firebase.firestore.FieldValue.serverTimestamp()
     };
+
+    // 廠商：一併存回可編輯的商品資料
+    if (type === 'supplier') {
+        data.products = collectEditProducts();
+    }
 
     try {
         await db.collection(COLLECTIONS[type]).doc(docId).update(data);

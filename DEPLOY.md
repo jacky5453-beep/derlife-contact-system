@@ -23,11 +23,13 @@ git push origin main
 - 前台：
   - 「我要賣貨」分兩條路徑：第一次提品（新廠商）／既有供應商
   - 兩步驟 wizard：step1 廠商資料 → step2 商品資訊（17 欄位含八大營養標示）
+  - **step2 頂端「📄 報價單上傳」為廠商必填欄位（Word/Excel/PDF、上限 20MB），存到 Firebase Storage `contact-quotations/`**（2026-07-03）
   - 「我要買貨」客戶填表（含勾選想詢價產品）
 - 後台：資料審核、編輯、匯出
   - 廠商列表：「商品數」欄、「身份」徽章（新／既有）
   - **廠商列表點「📦 N ▾」徽章可就地展開商品明細，並提供「匯出商品」「⬇️ 匯出這些商品」快速鈕（免進編輯）**（2026-07-03）
-  - 編輯彈窗：商品清單展開預覽（含營養標示）
+  - **編輯彈窗的商品資料可就地編輯（全欄位 + 八大營養），可新增／移除商品，按「儲存」一起寫回 Firestore**（2026-07-03）
+  - **編輯彈窗顯示「📥 下載報價單」（廠商前台上傳的 Word/Excel/PDF）**（2026-07-03）
   - **每個商品明細底部有「✍️ 一鍵產生文案」按鈕，帶商品資料開啟文案生成系統**（2026-07-03，沿用開團系統的 URL 參數格式）
   - 「帳號權限管理」分頁底下可編輯身份卡片 icon／標題／說明（支援 emoji、文字、上傳圖片）
 - 統一編號支援三種模式：有統編（8碼）／無統編／無需統編
@@ -52,6 +54,17 @@ git push origin main
 cd "/Users/jacky/Desktop/claude/claude code/規則主檔"
 ./deploy.sh derlife-audit
 ```
+
+## Storage 規則（2026-07-03 新增，報價單上傳用）
+- **檔案：** `storage.rules`（本資料夾）；`firebase.json` 已加 `"storage": {...}`
+- ⚠️ Storage 規則是「整個 bucket 一份、整份覆蓋」。目前 derlife-audit 只有本系統用 Storage。
+  規則只開放 `contact-quotations/**` 公開上傳（限 Word/Excel/PDF、20MB），其餘路徑維持需登入。
+- **部署指令：**
+  ```bash
+  cd "/Users/jacky/Desktop/claude/claude code/廠商及客戶資料系統"
+  firebase deploy --only storage --project derlife-audit
+  ```
+- **回滾：** Firebase Console > Storage > Rules > 歷史記錄，挑舊版重新發布。
 
 ## Telegram 新資料通知（Cloud Functions，2026-06-23 新增）
 廠商／客戶填完送出 → 自動推 Telegram 到「得來素業務戰情」群組，不用再去後台守著。
