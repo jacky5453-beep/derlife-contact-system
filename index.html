@@ -1774,7 +1774,7 @@ function renderTable(data) {
             : '';
         return `<tr class="border-b border-gray-100">
             <td class="p-3"><input type="checkbox" class="custom-checkbox" ${checked} onchange="toggleSelect('${item.id}', this.checked)"></td>
-            <td class="p-3 font-mono text-xs">${item.customId || '<span class=&quot;text-gray-300&quot;>未填</span>'}</td>
+            <td class="p-3 font-mono text-xs">${item.customId ? escHtml(item.customId) : '<span class="text-gray-300">未填</span>'}</td>
             <td class="p-3 font-medium">${escHtml(item.name || '')}${subTypeBadge}</td>
             <td class="p-3">${escHtml(item.shortName || '')}</td>
             ${ctCell}
