@@ -89,9 +89,10 @@ cd "/Users/jacky/Desktop/claude/claude code/規則主檔"
   ```
 
 ## 最後部署日期
-2026-07-06（公司資訊設定新增「預設注意事項」欄位：儲存於瀏覽器 localStorage，之後每次開客戶報價單自動帶入，免每次重打；報價單彈窗的「重設為預設」也改回到這份儲存版本）
+2026-07-06（廠商報價單簽名改選填：未簽名可直接下載 PDF（保留空白簽章欄，事後給客戶簽），只有線上簽名版才存 Storage＋記 `quotationConfirmed`；「客戶方資訊」按鈕改名「我方資訊（得來素）」避免誤會；同日稍早：公司資訊設定新增「預設注意事項」欄位）
 
 ## 更新歷程
+- 2026-07-06 — 廠商報價單：線上簽名改為**選填**——沒簽名也能下載 PDF（PDF 保留空白簽章欄），未簽名版不寫 `quotationConfirmed`／不上傳 Storage；「客戶方資訊」按鈕改名「我方資訊（得來素）」並補說明（該報價單中得來素是買方）（commit 1211183）
 - 2026-07-06 — 公司資訊設定新增「📌 預設注意事項」欄位（localStorage key `derlife-quote-company-info` 的 `notes`），開報價單自動帶入儲存版本，仍可針對個別客戶臨時調整（commit 81e2464）
 - 2026-07-03 — 後台商品資料改可就地編輯（含八大營養、增／刪商品）；新增**廠商報價單產生器＋canvas 線上簽名**，產出簽名版 PDF 下載留存並存 Storage `contact-signed-quotations/`（廠商 doc 記 `quotationConfirmed`）；同步啟用 Storage（規則為預設需登入）
 - 2026-07-03 — Cloud Functions：廠商提品通知**同步推業務戰情群＋得來素行銷專案群**（行銷群沿用工作管理表的 @derlife_worklog_bot，不必另加機器人）
