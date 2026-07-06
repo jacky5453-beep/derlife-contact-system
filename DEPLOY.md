@@ -89,9 +89,10 @@ cd "/Users/jacky/Desktop/claude/claude code/規則主檔"
   ```
 
 ## 最後部署日期
-2026-07-03（後台商品可就地編輯；廠商報價單產生器＋線上簽名＋簽名版 PDF 存檔下載）
+2026-07-06（公司資訊設定新增「預設注意事項」欄位：儲存於瀏覽器 localStorage，之後每次開客戶報價單自動帶入，免每次重打；報價單彈窗的「重設為預設」也改回到這份儲存版本）
 
 ## 更新歷程
+- 2026-07-06 — 公司資訊設定新增「📌 預設注意事項」欄位（localStorage key `derlife-quote-company-info` 的 `notes`），開報價單自動帶入儲存版本，仍可針對個別客戶臨時調整（commit 81e2464）
 - 2026-07-03 — 後台商品資料改可就地編輯（含八大營養、增／刪商品）；新增**廠商報價單產生器＋canvas 線上簽名**，產出簽名版 PDF 下載留存並存 Storage `contact-signed-quotations/`（廠商 doc 記 `quotationConfirmed`）；同步啟用 Storage（規則為預設需登入）
 - 2026-07-03 — Cloud Functions：廠商提品通知**同步推業務戰情群＋得來素行銷專案群**（行銷群沿用工作管理表的 @derlife_worklog_bot，不必另加機器人）
 - 2026-06-23 — 新增 Cloud Functions：廠商／客戶填完送出自動推 Telegram 到業務戰情群組（共用業務告警 bot 與密鑰）
