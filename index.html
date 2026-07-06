@@ -878,6 +878,11 @@
                 <label class="block text-sm font-medium text-gray-700 mb-1">聯絡地址</label>
                 <input type="text" id="ci-address" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-brand focus:border-brand outline-none">
             </div>
+            <div class="md:col-span-2">
+                <label class="block text-sm font-medium text-gray-700 mb-1">📌 預設注意事項（會印在報價單下方）</label>
+                <textarea id="ci-notes" rows="4" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-brand focus:border-brand outline-none font-mono"></textarea>
+                <p class="text-xs text-gray-400 mt-1">每行一條，匯出時自動編號。儲存後，每次開報價單都會自動帶入這裡的內容（仍可針對個別客戶臨時調整）。</p>
+            </div>
         </div>
         <div class="mt-6 flex justify-between items-center flex-wrap gap-2">
             <button type="button" onclick="resetCompanyInfo()" class="text-sm text-blue-500 hover:text-blue-700">重設為預設值</button>
@@ -3360,6 +3365,7 @@ function openCompanyInfoModal() {
     document.getElementById('ci-contact').value = info.contact || '';
     document.getElementById('ci-mobile').value = info.mobile || '';
     document.getElementById('ci-address').value = info.address || '';
+    document.getElementById('ci-notes').value = info.notes || getBuiltinQuoteNotes();
     document.getElementById('modal-company-info').classList.remove('hidden');
 }
 
@@ -3374,7 +3380,8 @@ function saveCompanyInfo() {
         email: document.getElementById('ci-email').value.trim(),
         contact: document.getElementById('ci-contact').value.trim(),
         mobile: document.getElementById('ci-mobile').value.trim(),
-        address: document.getElementById('ci-address').value.trim()
+        address: document.getElementById('ci-address').value.trim(),
+        notes: document.getElementById('ci-notes').value.trim()
     };
     localStorage.setItem(COMPANY_INFO_KEY, JSON.stringify(info));
     showToast('公司資訊已儲存');
@@ -3389,6 +3396,7 @@ function resetCompanyInfo() {
     document.getElementById('ci-contact').value = DEFAULT_COMPANY_INFO.contact;
     document.getElementById('ci-mobile').value = DEFAULT_COMPANY_INFO.mobile;
     document.getElementById('ci-address').value = DEFAULT_COMPANY_INFO.address;
+    document.getElementById('ci-notes').value = getBuiltinQuoteNotes();
 }
 
 // ===== 後台：產生報價單（按 Excel 範本格式） =====
@@ -3424,7 +3432,8 @@ function getQuoteList() {
     return allProducts.filter(p => !p._deleted && p.customerType === quoteCustomer.customerType);
 }
 
-function getDefaultQuoteNotes() {
+// 系統內建的注意事項（未曾在「公司資訊設定」儲存過時使用）
+function getBuiltinQuoteNotes() {
     const d = new Date();
     const validUntil = `${d.getFullYear()}.12.31`;
     return [
@@ -3432,6 +3441,12 @@ function getDefaultQuoteNotes() {
         `此報價金額皆為含稅價`,
         `訂購需滿 $7,000 即可享有此報價優惠價格（免運費）`
     ].join('\n');
+}
+
+// 報價單預設注意事項：優先用「公司資訊設定」儲存的版本
+function getDefaultQuoteNotes() {
+    const saved = (getCompanyInfo().notes || '').trim();
+    return saved || getBuiltinQuoteNotes();
 }
 
 function resetQuoteNotes() {
@@ -3448,9 +3463,9 @@ function getQuoteNotesArray() {
 function renderQuoteModal() {
     document.getElementById('quote-customer-name').textContent = quoteCustomer.name || '';
     document.getElementById('quote-customer-type').textContent = quoteCustomer.customerType || '';
-    // 預設注意事項
+    // 每次開報價單都帶入「公司資訊設定」儲存的預設注意事項（避免殘留上一位客戶的臨時修改）
     const ta = document.getElementById('quote-notes');
-    if (ta && !ta.value.trim()) ta.value = getDefaultQuoteNotes();
+    if (ta) ta.value = getDefaultQuoteNotes();
     const list = getQuoteList();
     // 預先勾選客戶當初提交時選的產品（用 doc id 比對）
     const preSelected = new Set(quoteCustomer.selectedProducts || []);
