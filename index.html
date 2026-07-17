@@ -1553,16 +1553,28 @@ function goToAdmin() {
     }
 }
 
-// 使用 redirect 取代 popup，避免 Chrome COOP 問題
-function loginWithGoogle() {
-    auth.signInWithRedirect(provider).catch(err => {
+// popup 優先（GitHub Pages 跨網域 redirect 會被第三方 cookie 封鎖擋掉），被封鎖才 fallback 到 redirect
+async function loginWithGoogle() {
+    try {
+        const result = await auth.signInWithPopup(provider);
+        await handleLoginResult(result);
+    } catch (err) {
         console.error(err);
-        showToast('登入失敗', 'error');
-    });
+        if (err.code === 'auth/popup-blocked' || err.code === 'auth/operation-not-supported-in-this-environment') {
+            auth.signInWithRedirect(provider).catch(e => {
+                console.error(e);
+                showToast('登入失敗', 'error');
+            });
+        } else if (err.code === 'auth/popup-closed-by-user' || err.code === 'auth/cancelled-popup-request') {
+            showToast('登入視窗已關閉，請再點一次登入', 'error');
+        } else {
+            showToast('登入失敗：' + (err.code || err.message), 'error');
+        }
+    }
 }
 
-// 頁面載入時處理 redirect 回來的登入結果
-auth.getRedirectResult().then(async (result) => {
+// 登入結果統一處理（popup 與 redirect 共用）：白名單驗證 → 進後台
+async function handleLoginResult(result) {
     if (!result || !result.user) return;
     const email = result.user.email;
     try {
@@ -1594,7 +1606,12 @@ auth.getRedirectResult().then(async (result) => {
         console.error(err);
         showToast('登入失敗', 'error');
     }
-}).catch(err => console.error(err));
+}
+
+// 頁面載入時處理 redirect 回來的登入結果（fallback 路徑用）
+auth.getRedirectResult()
+    .then(handleLoginResult)
+    .catch(err => console.error(err));
 
 function updateUserUI() {
     const info = document.getElementById('user-info');
