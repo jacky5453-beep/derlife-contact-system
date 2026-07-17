@@ -89,9 +89,10 @@ cd "/Users/jacky/Desktop/claude/claude code/規則主檔"
   ```
 
 ## 最後部署日期
-2026-07-06（廠商報價單簽名改選填：未簽名可直接下載 PDF（保留空白簽章欄，事後給客戶簽），只有線上簽名版才存 Storage＋記 `quotationConfirmed`；「客戶方資訊」按鈕改名「我方資訊（得來素）」避免誤會；同日稍早：公司資訊設定新增「預設注意事項」欄位）
+2026-07-17（修後台 Google 登入進不去：GitHub Pages 跨網域 `signInWithRedirect` 被瀏覽器第三方 cookie 政策擋掉，選完帳號跳回來登入結果遺失；改為 **popup 優先、被封鎖才 fallback 到 redirect**，popup／redirect 共用 `handleLoginResult()` 做白名單驗證＋進後台）
 
 ## 更新歷程
+- 2026-07-17 — 修後台 Google 登入：`signInWithPopup` 優先（跨網域 redirect 受第三方 cookie 封鎖影響），`auth/popup-blocked` 才 fallback `signInWithRedirect`；登入結果處理抽成 `handleLoginResult()` 兩路共用（commit bc7cda7）
 - 2026-07-06 — 廠商報價單：線上簽名改為**選填**——沒簽名也能下載 PDF（PDF 保留空白簽章欄），未簽名版不寫 `quotationConfirmed`／不上傳 Storage；「客戶方資訊」按鈕改名「我方資訊（得來素）」並補說明（該報價單中得來素是買方）（commit 1211183）
 - 2026-07-06 — 公司資訊設定新增「📌 預設注意事項」欄位（localStorage key `derlife-quote-company-info` 的 `notes`），開報價單自動帶入儲存版本，仍可針對個別客戶臨時調整（commit 81e2464）
 - 2026-07-03 — 後台商品資料改可就地編輯（含八大營養、增／刪商品）；新增**廠商報價單產生器＋canvas 線上簽名**，產出簽名版 PDF 下載留存並存 Storage `contact-signed-quotations/`（廠商 doc 記 `quotationConfirmed`）；同步啟用 Storage（規則為預設需登入）
