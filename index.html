@@ -157,12 +157,17 @@
             <div id="wizard-steps" class="hidden mb-6 flex items-center justify-center gap-2 sm:gap-4">
                 <div class="flex items-center gap-2">
                     <div id="step-1-badge" class="w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm bg-brand text-brand-dark">1</div>
-                    <span class="text-sm font-medium text-brand-dark hidden sm:inline">廠商資料</span>
+                    <span id="step-1-label" class="text-sm font-medium text-brand-dark hidden sm:inline">廠商資料</span>
                 </div>
-                <div class="w-12 sm:w-20 h-0.5 bg-gray-200"></div>
+                <div class="w-8 sm:w-14 h-0.5 bg-gray-200"></div>
                 <div class="flex items-center gap-2">
                     <div id="step-2-badge" class="w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm bg-gray-200 text-gray-400">2</div>
                     <span id="step-2-label" class="text-sm font-medium text-gray-400 hidden sm:inline">商品資訊</span>
+                </div>
+                <div class="w-8 sm:w-14 h-0.5 bg-gray-200"></div>
+                <div class="flex items-center gap-2">
+                    <div id="step-3-badge" class="w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm bg-gray-200 text-gray-400">3</div>
+                    <span id="step-3-label" class="text-sm font-medium text-gray-400 hidden sm:inline">請款須知</span>
                 </div>
             </div>
 
@@ -296,6 +301,131 @@
                     <!-- Step 2 操作按鈕 -->
                     <div class="mt-6 flex justify-between items-center gap-3">
                         <button type="button" onclick="goToStep(1)" class="px-5 py-3 rounded-lg font-medium text-gray-600 border border-gray-300 hover:bg-gray-50 transition">
+                            ← 上一步
+                        </button>
+                        <button type="button" onclick="goToStep(3)" class="px-6 py-3 rounded-lg font-bold text-brand-dark transition" style="background: #C3F000;">
+                            下一步：請款須知 →
+                        </button>
+                    </div>
+                </div>
+
+                <!-- ============ Step 3: 請款須知與資料（僅廠商顯示） ============ -->
+                <div id="form-step-3" class="hidden">
+                    <div class="flex items-center gap-3 mb-1">
+                        <span class="text-2xl">💰</span>
+                        <h3 class="text-lg font-bold text-brand-dark">請款須知與資料</h3>
+                    </div>
+                    <p id="billing-intro-new" class="text-sm text-gray-500 mb-5">請詳閱以下本公司請款流程說明，並提供匯款帳戶與報價單資料，以利日後貨款請款作業順利進行。</p>
+                    <p id="billing-intro-existing" class="hidden text-sm text-gray-500 mb-5">請上傳本次提品的產品報價單；匯款帳戶如有變更，也請一併上傳最新存摺照片。</p>
+
+                    <div class="space-y-5">
+                        <!-- 1. 月結基準日 -->
+                        <div class="billing-new-only bg-gray-50 border border-gray-200 rounded-xl p-5">
+                            <h4 class="font-bold text-brand-dark mb-2 flex items-center gap-2"><span class="inline-flex items-center justify-center w-6 h-6 rounded bg-brand-dark text-brand text-xs font-bold flex-shrink-0">1</span>月結基準日</h4>
+                            <p class="text-sm text-gray-700 leading-relaxed">本公司月結基準日為<span class="font-bold">月底 30/31 號</span>。</p>
+                            <label class="mt-3 flex items-start gap-2 cursor-pointer select-none bg-white border border-gray-300 rounded-lg px-3 py-2.5 hover:border-brand transition">
+                                <input type="checkbox" name="billAckClosing" id="billAckClosing" required class="mt-0.5 w-4 h-4 accent-[#C3F000] flex-shrink-0">
+                                <span class="text-sm text-gray-700">我已閱讀並了解月結基準日規定</span>
+                            </label>
+                        </div>
+
+                        <!-- 2. 發票與對帳單提供方式 -->
+                        <div class="billing-new-only bg-gray-50 border border-gray-200 rounded-xl p-5">
+                            <h4 class="font-bold text-brand-dark mb-2 flex items-center gap-2"><span class="inline-flex items-center justify-center w-6 h-6 rounded bg-brand-dark text-brand text-xs font-bold flex-shrink-0">2</span>發票與對帳單提供方式 <span class="text-xs font-normal text-red-500">*（擇一選填）</span></h4>
+                            <div class="space-y-2">
+                                <label class="flex items-start gap-2 cursor-pointer select-none bg-white border border-gray-300 rounded-lg px-3 py-2.5 hover:border-brand transition">
+                                    <input type="radio" name="billInvoiceMethod" value="電子發票及電子對帳單" required class="mt-0.5 w-4 h-4 accent-[#C3F000] flex-shrink-0">
+                                    <span class="text-sm text-gray-700"><span class="font-bold">提供電子發票及電子對帳單</span><br><span class="text-gray-500">請 email 至 <a href="mailto:dlsveg.fa@gmail.com" class="text-brand-dark underline">dlsveg.fa@gmail.com</a> 電子郵件信箱</span></span>
+                                </label>
+                                <label class="flex items-start gap-2 cursor-pointer select-none bg-white border border-gray-300 rounded-lg px-3 py-2.5 hover:border-brand transition">
+                                    <input type="radio" name="billInvoiceMethod" value="開立紙本發票與紙本對帳單" class="mt-0.5 w-4 h-4 accent-[#C3F000] flex-shrink-0">
+                                    <span class="text-sm text-gray-700"><span class="font-bold">開立紙本發票與紙本對帳單</span><br><span class="text-gray-500">紙本對帳單及發票請郵寄至 420 台中市豐原區豐勢路二段819巷76弄6號（次月五日前提供）</span></span>
+                                </label>
+                                <label class="flex items-start gap-2 cursor-pointer select-none bg-white border border-gray-300 rounded-lg px-3 py-2.5 hover:border-brand transition">
+                                    <input type="radio" name="billInvoiceMethod" value="隨貨附發票" class="mt-0.5 w-4 h-4 accent-[#C3F000] flex-shrink-0">
+                                    <span class="text-sm text-gray-700"><span class="font-bold">隨貨附發票</span><br><span class="text-gray-500">對帳單 email 至 <a href="mailto:dlsveg.fa@gmail.com" class="text-brand-dark underline">dlsveg.fa@gmail.com</a> 電子郵件信箱</span></span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- 3. 匯款帳戶（存摺照片上傳） -->
+                        <div class="bg-gray-50 border border-gray-200 rounded-xl p-5">
+                            <h4 class="font-bold text-brand-dark mb-2 flex items-center gap-2"><span class="inline-flex items-center justify-center w-6 h-6 rounded bg-brand-dark text-brand text-xs font-bold flex-shrink-0">3</span>匯款帳戶（上傳存摺照片）<span id="billing-passbook-required-mark" class="text-xs font-normal text-red-500">*</span></h4>
+                            <p class="billing-new-only text-sm text-gray-700 leading-relaxed mb-3">請提供<span class="font-bold">合作金庫銀行</span>之匯款帳戶（如 貴公司所提供之匯款帳戶非本公司往來金融機構者，其匯款手續費將從貴公司貨款中扣除）。本公司財務將於<span class="font-bold">次月月底</span>（如遇假日則順延至下一個工作日），將貨款匯入貴公司指定帳戶。</p>
+                            <p id="billing-passbook-existing-hint" class="hidden text-sm text-gray-500 mb-3">匯款帳戶如有變更，請上傳最新的存摺封面照片（未變更可略過）。</p>
+                            <input type="file" id="billPassbookInput" accept="image/*" class="hidden" onchange="onPassbookSelected(this)">
+                            <button type="button" onclick="document.getElementById('billPassbookInput').click()" class="w-full py-4 border-2 border-dashed border-gray-300 rounded-xl text-gray-500 hover:border-brand hover:text-brand-dark hover:bg-brand/10 transition flex items-center justify-center gap-2 text-sm font-medium">
+                                📷 點此上傳存摺封面照片
+                            </button>
+                            <div id="billPassbookPreview" class="hidden mt-3 flex items-center gap-3 bg-white border border-green-300 rounded-lg p-3">
+                                <img id="billPassbookImg" class="w-24 h-16 object-cover rounded border border-gray-200" alt="存摺照片預覽">
+                                <div class="flex-1 min-w-0">
+                                    <p class="text-sm font-medium text-green-700">✓ 已選擇存摺照片</p>
+                                    <p id="billPassbookName" class="text-xs text-gray-400 truncate"></p>
+                                </div>
+                                <button type="button" onclick="clearPassbook()" class="text-xs text-red-500 hover:text-red-700 flex-shrink-0">移除</button>
+                            </div>
+                        </div>
+
+                        <!-- 4. 產品報價單上傳 -->
+                        <div class="bg-gray-50 border border-gray-200 rounded-xl p-5">
+                            <h4 class="font-bold text-brand-dark mb-2 flex items-center gap-2"><span class="inline-flex items-center justify-center w-6 h-6 rounded bg-brand-dark text-brand text-xs font-bold flex-shrink-0">4</span>產品報價單 <span class="text-xs font-normal text-red-500">*</span></h4>
+                            <p class="text-sm text-gray-700 leading-relaxed mb-3">請提供產品之報價單（支援 PDF、圖片、Excel、Word 檔案，10MB 以內）。</p>
+                            <input type="file" id="billQuotationInput" accept=".pdf,.jpg,.jpeg,.png,.webp,.heic,.xls,.xlsx,.doc,.docx" class="hidden" onchange="onQuotationSelected(this)">
+                            <button type="button" onclick="document.getElementById('billQuotationInput').click()" class="w-full py-4 border-2 border-dashed border-gray-300 rounded-xl text-gray-500 hover:border-brand hover:text-brand-dark hover:bg-brand/10 transition flex items-center justify-center gap-2 text-sm font-medium">
+                                📄 點此上傳報價單檔案
+                            </button>
+                            <div id="billQuotationPreview" class="hidden mt-3 flex items-center gap-3 bg-white border border-green-300 rounded-lg p-3">
+                                <span class="text-2xl flex-shrink-0">📄</span>
+                                <div class="flex-1 min-w-0">
+                                    <p class="text-sm font-medium text-green-700">✓ 已選擇報價單檔案</p>
+                                    <p id="billQuotationName" class="text-xs text-gray-400 truncate"></p>
+                                </div>
+                                <button type="button" onclick="clearQuotation()" class="text-xs text-red-500 hover:text-red-700 flex-shrink-0">移除</button>
+                            </div>
+                        </div>
+
+                        <!-- 5. 發票開立資訊 -->
+                        <div class="billing-new-only bg-gray-50 border border-gray-200 rounded-xl p-5">
+                            <h4 class="font-bold text-brand-dark mb-2 flex items-center gap-2"><span class="inline-flex items-center justify-center w-6 h-6 rounded bg-brand-dark text-brand text-xs font-bold flex-shrink-0">5</span>發票開立資訊</h4>
+                            <p class="text-sm text-gray-700 leading-relaxed mb-3">※ 月結請款者，發票（三聯式）可於月底<span class="font-bold">合併開立 1 張</span>請款，發票開立資訊如下：</p>
+                            <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
+                                <table class="w-full text-sm">
+                                    <thead>
+                                        <tr class="bg-brand-dark text-brand">
+                                            <th class="px-4 py-2 text-left font-medium">公司行號（發票抬頭）</th>
+                                            <th class="px-4 py-2 text-left font-medium">統一編號</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td class="px-4 py-2.5 font-bold text-brand-dark">得來素企業有限公司</td>
+                                            <td class="px-4 py-2.5 font-bold text-brand-dark">53613149</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                            <label class="mt-3 flex items-start gap-2 cursor-pointer select-none bg-white border border-gray-300 rounded-lg px-3 py-2.5 hover:border-brand transition">
+                                <input type="checkbox" name="billAckInvoice" id="billAckInvoice" required class="mt-0.5 w-4 h-4 accent-[#C3F000] flex-shrink-0">
+                                <span class="text-sm text-gray-700">我已閱讀並了解發票開立資訊</span>
+                            </label>
+                        </div>
+
+                        <!-- 既有供應商：請款須知參考（收合） -->
+                        <details id="billing-existing-ref" class="hidden bg-gray-50 border border-gray-200 rounded-xl px-5 py-4">
+                            <summary class="cursor-pointer text-sm font-medium text-gray-500 hover:text-brand-dark select-none">📖 查看本公司請款須知（參考用）</summary>
+                            <div class="mt-3 text-sm text-gray-600 leading-relaxed space-y-2">
+                                <p>・本公司月結基準日為月底 30/31 號。</p>
+                                <p>・電子發票及電子對帳單請 email 至 dlsveg.fa@gmail.com；紙本對帳單及發票請郵寄至 420 台中市豐原區豐勢路二段819巷76弄6號（次月五日前提供）；隨貨附發票者，對帳單 email 至 dlsveg.fa@gmail.com。</p>
+                                <p>・請提供合作金庫銀行之匯款帳戶（非本公司往來金融機構者，匯款手續費將從貨款中扣除），本公司財務將於次月月底（遇假日順延至下一個工作日）匯入貴公司指定帳戶。</p>
+                                <p>・月結請款者，發票（三聯式）可於月底合併開立 1 張請款。發票抬頭：得來素企業有限公司／統編 53613149。</p>
+                            </div>
+                        </details>
+                    </div>
+
+                    <!-- Step 3 操作按鈕 -->
+                    <div class="mt-6 flex justify-between items-center gap-3">
+                        <button type="button" onclick="goToStep(2)" class="px-5 py-3 rounded-lg font-medium text-gray-600 border border-gray-300 hover:bg-gray-50 transition">
                             ← 上一步
                         </button>
                         <button type="submit" id="btn-submit-supplier" class="px-8 py-3 rounded-lg font-bold text-brand-dark transition text-lg" style="background: #C3F000;">
@@ -736,6 +866,15 @@
                     <label class="block text-sm font-medium text-gray-700 mb-1">備註</label>
                     <textarea id="edit-note" rows="3" class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-brand focus:border-brand outline-none"></textarea>
                 </div>
+            </div>
+
+            <!-- 廠商請款須知與資料（編輯彈窗，僅廠商顯示） -->
+            <div id="edit-billing-section" class="hidden mt-6 pt-5 border-t border-gray-200">
+                <h4 class="text-base font-bold text-brand-dark flex items-center gap-2 mb-3">
+                    <span>💰</span>
+                    <span>請款須知與資料</span>
+                </h4>
+                <div id="edit-billing-wrap"></div>
             </div>
 
             <!-- 廠商商品清單（編輯彈窗，僅廠商顯示） -->
@@ -1320,9 +1459,10 @@ function startForm(type, mode) {
     supplierProductCount = 0;
     if (isSupplier) addSupplierProduct();
 
-    // Wizard：廠商兩步驟、客戶單頁
+    // Wizard：廠商三步驟、客戶單頁
     const wizardSteps = document.getElementById('wizard-steps');
     const step2 = document.getElementById('form-step-2');
+    const step3 = document.getElementById('form-step-3');
     const btnNext = document.getElementById('btn-step1-next');
     const btnSubmitCustomer = document.getElementById('btn-submit-customer');
     if (isSupplier) {
@@ -1330,54 +1470,191 @@ function startForm(type, mode) {
         btnNext.classList.remove('hidden');
         btnSubmitCustomer.classList.add('hidden');
         step2.classList.add('hidden'); // 預設先進 step 1
+        step3.classList.add('hidden');
+        resetBillingStep(isExistingSupplier); // 重置第 3 步（請款須知）狀態
         goToStep(1);
     } else {
         wizardSteps.classList.add('hidden');
         btnNext.classList.add('hidden');
         btnSubmitCustomer.classList.remove('hidden');
         step2.classList.add('hidden');
+        step3.classList.add('hidden');
         document.getElementById('form-step-1').classList.remove('hidden');
     }
 
     navigateTo('form');
 }
 
-// Wizard 步驟切換
+// Wizard 步驟切換（廠商三步驟：廠商資料 → 商品資訊 → 請款須知）
 function goToStep(n) {
-    const step1 = document.getElementById('form-step-1');
-    const step2 = document.getElementById('form-step-2');
-    const badge1 = document.getElementById('step-1-badge');
-    const badge2 = document.getElementById('step-2-badge');
-    const label2 = document.getElementById('step-2-label');
-    if (n === 1) {
-        step1.classList.remove('hidden');
-        step2.classList.add('hidden');
-        badge1.className = 'w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm bg-brand text-brand-dark';
-        badge2.className = 'w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm bg-gray-200 text-gray-400';
-        label2.className = 'text-sm font-medium text-gray-400 hidden sm:inline';
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-    } else if (n === 2) {
-        // 從 step 1 點下一步：先做 HTML5 內建驗證（限定在 step 1 範圍內的欄位）
-        const step1El = document.getElementById('form-step-1');
-        const inputs = step1El.querySelectorAll('input, select, textarea');
-        for (const el of inputs) {
-            if (!el.checkValidity()) {
-                el.reportValidity();
-                return;
+    // 往前走時先驗證「上一步」的欄位（HTML5 內建驗證；往回走時上一步是隱藏的，自動略過）
+    if (n >= 2) {
+        const fromEl = document.getElementById('form-step-' + (n - 1));
+        if (fromEl && !fromEl.classList.contains('hidden')) {
+            const inputs = fromEl.querySelectorAll('input, select, textarea');
+            for (const el of inputs) {
+                if (!el.checkValidity()) {
+                    el.reportValidity();
+                    return;
+                }
             }
         }
-        step1.classList.add('hidden');
-        step2.classList.remove('hidden');
-        badge1.className = 'w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm bg-green-500 text-white';
-        badge1.textContent = '✓';
-        badge2.className = 'w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm bg-brand text-brand-dark';
-        label2.className = 'text-sm font-medium text-brand-dark hidden sm:inline';
-        window.scrollTo({ top: 0, behavior: 'smooth' });
     }
-    // 回到 step 1 時把 badge1 數字復原（避免 ✓ 留著）
-    if (n === 1) {
-        badge1.textContent = '1';
+    for (let i = 1; i <= 3; i++) {
+        const stepEl = document.getElementById('form-step-' + i);
+        const badge = document.getElementById(`step-${i}-badge`);
+        const label = document.getElementById(`step-${i}-label`);
+        if (stepEl) stepEl.classList.toggle('hidden', i !== n);
+        if (badge) {
+            if (i < n) {
+                badge.className = 'w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm bg-green-500 text-white';
+                badge.textContent = '✓';
+            } else if (i === n) {
+                badge.className = 'w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm bg-brand text-brand-dark';
+                badge.textContent = String(i);
+            } else {
+                badge.className = 'w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm bg-gray-200 text-gray-400';
+                badge.textContent = String(i);
+            }
+        }
+        if (label) label.className = 'text-sm font-medium ' + (i === n ? 'text-brand-dark' : 'text-gray-400') + ' hidden sm:inline';
     }
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+// ===== Step 3：請款須知與資料 =====
+let billPassbookFile = null;   // 存摺照片（壓縮後 Blob，或無法壓縮時的原始檔）
+let billQuotationFile = null;  // 報價單原始 File
+
+// 重置第 3 步狀態；新廠商＝完整須知全必填、既有供應商＝精簡版（報價單必傳、存摺選填）
+function resetBillingStep(isExisting) {
+    billPassbookFile = null;
+    billQuotationFile = null;
+    document.getElementById('billPassbookInput').value = '';
+    document.getElementById('billQuotationInput').value = '';
+    document.getElementById('billPassbookPreview').classList.add('hidden');
+    document.getElementById('billQuotationPreview').classList.add('hidden');
+    document.querySelectorAll('#form-step-3 .billing-new-only').forEach(el => el.classList.toggle('hidden', isExisting));
+    document.getElementById('billing-intro-new').classList.toggle('hidden', isExisting);
+    document.getElementById('billing-intro-existing').classList.toggle('hidden', !isExisting);
+    document.getElementById('billing-passbook-existing-hint').classList.toggle('hidden', !isExisting);
+    document.getElementById('billing-passbook-required-mark').classList.toggle('hidden', isExisting);
+    document.getElementById('billing-existing-ref').classList.toggle('hidden', !isExisting);
+    // 隱藏區塊的必填要拔掉，否則瀏覽器驗證會卡在看不到的欄位
+    document.getElementById('billAckClosing').required = !isExisting;
+    document.getElementById('billAckInvoice').required = !isExisting;
+    const firstRadio = document.querySelector('input[name="billInvoiceMethod"]');
+    if (firstRadio) firstRadio.required = !isExisting;
+}
+
+// 存摺照片：選檔 → 壓縮（最長邊 1600px JPEG）→ 預覽；無法解碼的格式（如 HEIC）直接用原檔
+function onPassbookSelected(input) {
+    const file = input.files && input.files[0];
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+        showToast('請選擇圖片檔案', 'error');
+        input.value = '';
+        return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+        showToast('圖片超過 10MB，請換一張', 'error');
+        input.value = '';
+        return;
+    }
+    const previewImg = document.getElementById('billPassbookImg');
+    const showPreview = () => {
+        document.getElementById('billPassbookName').textContent = file.name;
+        document.getElementById('billPassbookPreview').classList.remove('hidden');
+    };
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        const img = new Image();
+        img.onload = () => {
+            const maxSide = 1600;
+            let w = img.width, h = img.height;
+            if (Math.max(w, h) > maxSide) {
+                const ratio = maxSide / Math.max(w, h);
+                w = Math.round(w * ratio);
+                h = Math.round(h * ratio);
+            }
+            const canvas = document.createElement('canvas');
+            canvas.width = w;
+            canvas.height = h;
+            canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+            canvas.toBlob((blob) => {
+                billPassbookFile = blob || file;
+                previewImg.src = canvas.toDataURL('image/jpeg', 0.6);
+                previewImg.classList.remove('hidden');
+                showPreview();
+            }, 'image/jpeg', 0.85);
+        };
+        img.onerror = () => {
+            // 瀏覽器無法解碼（如部分 HEIC）：直接用原始檔上傳，不做縮圖
+            billPassbookFile = file;
+            previewImg.classList.add('hidden');
+            showPreview();
+        };
+        img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+}
+
+function clearPassbook() {
+    billPassbookFile = null;
+    document.getElementById('billPassbookInput').value = '';
+    document.getElementById('billPassbookPreview').classList.add('hidden');
+}
+
+// 報價單：選檔 → 檢查大小 → 顯示檔名
+function onQuotationSelected(input) {
+    const file = input.files && input.files[0];
+    if (!file) return;
+    if (file.size > 10 * 1024 * 1024) {
+        showToast('檔案超過 10MB，請壓縮後再上傳', 'error');
+        input.value = '';
+        return;
+    }
+    billQuotationFile = file;
+    document.getElementById('billQuotationName').textContent = `${file.name}（${(file.size / 1024 / 1024).toFixed(2)} MB）`;
+    document.getElementById('billQuotationPreview').classList.remove('hidden');
+}
+
+function clearQuotation() {
+    billQuotationFile = null;
+    document.getElementById('billQuotationInput').value = '';
+    document.getElementById('billQuotationPreview').classList.add('hidden');
+}
+
+// 上傳請款檔案到 Storage（前台匿名可寫 contact-billing-uploads/，後台登入才能讀）並組 billing 欄位
+async function uploadBillingFiles(docId, btn) {
+    const isExisting = currentSupplierMode === 'existing';
+    const methodEl = document.querySelector('input[name="billInvoiceMethod"]:checked');
+    const billing = {
+        ackClosing: !isExisting && document.getElementById('billAckClosing').checked,       // 已閱讀月結基準日
+        ackInvoiceInfo: !isExisting && document.getElementById('billAckInvoice').checked,   // 已閱讀發票開立資訊
+        invoiceMethod: (!isExisting && methodEl) ? methodEl.value : '',                     // 發票與對帳單方式
+        passbookPath: '',
+        quotationPath: '',
+        quotationName: '',
+        submittedAt: firebase.firestore.FieldValue.serverTimestamp()
+    };
+    if (billPassbookFile) {
+        if (btn) btn.textContent = '上傳存摺照片中...';
+        const ext = billPassbookFile.type === 'image/jpeg' ? 'jpg'
+                  : ((billPassbookFile.name || '').split('.').pop() || 'jpg');
+        const path = `contact-billing-uploads/${docId}/存摺照片.${ext}`;
+        await storage.ref(path).put(billPassbookFile, { contentType: billPassbookFile.type || 'image/jpeg' });
+        billing.passbookPath = path;
+    }
+    if (billQuotationFile) {
+        if (btn) btn.textContent = '上傳報價單中...';
+        const safeName = billQuotationFile.name.replace(/[\/\\#?%\[\]]/g, '_');
+        const path = `contact-billing-uploads/${docId}/報價單_${safeName}`;
+        await storage.ref(path).put(billQuotationFile);
+        billing.quotationPath = path;
+        billing.quotationName = billQuotationFile.name;
+    }
+    return billing;
 }
 
 async function onCustomerTypeChange() {
@@ -1528,9 +1805,25 @@ async function submitForm(e) {
                 // 舊廠商自動把備註標上識別前綴，方便後台合併
                 data.note = userNote ? `【既有供應商補商品】${userNote}` : '【既有供應商補商品】';
             }
-        }
 
-        await db.collection(COLLECTIONS[currentFormType]).add(data);
+            // Step 3 檔案必填檢查（自訂上傳區，HTML5 驗證管不到）
+            // 新廠商：存摺照片＋報價單都必傳；既有供應商：報價單必傳、存摺選填
+            if (currentSupplierMode !== 'existing' && !billPassbookFile) {
+                showToast('請上傳存摺封面照片', 'error');
+                return;
+            }
+            if (!billQuotationFile) {
+                showToast('請上傳產品報價單檔案', 'error');
+                return;
+            }
+
+            // 先取得 doc id → 上傳檔案到 Storage → 寫入資料（含 billing 欄位）
+            const docRef = db.collection(COLLECTIONS.supplier).doc();
+            data.billing = await uploadBillingFiles(docRef.id, btn);
+            await docRef.set(data);
+        } else {
+            await db.collection(COLLECTIONS[currentFormType]).add(data);
+        }
         navigateTo('success');
     } catch (err) {
         console.error(err);
@@ -1923,14 +2216,18 @@ function openEditModal(docId) {
     document.getElementById('edit-email').value = item.email || '';
     document.getElementById('edit-note').value = item.note || '';
 
-    // 廠商報價單 + 商品清單（可編輯）
+    // 廠商報價單 + 請款資料 + 商品清單（可編輯）
     const prodWrap = document.getElementById('edit-products-wrap');
+    const billingSection = document.getElementById('edit-billing-section');
     if (isSupplier) {
         prodWrap.classList.remove('hidden');
+        billingSection.classList.remove('hidden');
         renderSupplierQuoteSection(docId, item);
+        renderSupplierBillingSection(item);
         renderEditProducts(item.products || []);
     } else {
         prodWrap.classList.add('hidden');
+        billingSection.classList.add('hidden');
     }
 
     document.getElementById('modal-edit').classList.remove('hidden');
@@ -1964,6 +2261,47 @@ function renderSupplierQuoteSection(docId, item) {
             ${canQuote ? `<button type="button" onclick="openSupplierQuoteModal('${docId}')" class="px-3 py-1.5 rounded-lg text-xs font-bold text-brand-dark flex-shrink-0" style="background: #C3F000;">📄 產生報價單</button>` : ''}
         </div>
         ${confirmedHtml}`;
+}
+
+// 後台：編輯彈窗的「請款須知與資料」區（前台第 3 步填的資料）
+function renderSupplierBillingSection(item) {
+    const wrap = document.getElementById('edit-billing-wrap');
+    if (!wrap) return;
+    const b = item.billing;
+    if (!b) {
+        wrap.innerHTML = `<div class="bg-gray-50 border border-gray-200 rounded-lg px-3 py-2.5 text-xs text-gray-400">尚未填寫請款須知與資料（此筆為功能上線前的舊資料，或廠商未完成第 3 步）</div>`;
+        return;
+    }
+    const isExisting = item.submissionType === 'existing';
+    // 勾選狀態：既有供應商免勾，顯示「免填」
+    const ackHtml = (checked) => checked
+        ? `<span class="text-green-700 font-medium">✓ 已閱讀</span>`
+        : (isExisting ? `<span class="text-gray-400">—（既有供應商免填）</span>` : `<span class="text-red-500">✕ 未勾選</span>`);
+    // 檔案狀態：有路徑給「查看」按鈕（登入後才能讀 Storage）
+    const fileHtml = (path, name, optional) => {
+        if (!path) return optional ? `<span class="text-gray-400">—（選填未上傳）</span>` : `<span class="text-red-500">✕ 未上傳</span>`;
+        const nameHtml = name ? `<span class="ml-2 text-xs text-gray-400 align-middle">${escHtml(name)}</span>` : '';
+        return `<button type="button" onclick="viewBillingFile('${escAttr(path)}')" class="px-3 py-1 rounded-lg text-xs font-medium text-white" style="background: #16a34a;">🔍 查看</button>${nameHtml}`;
+    };
+    wrap.innerHTML = `
+        <div class="bg-gray-50 border border-gray-200 rounded-lg divide-y divide-gray-200 text-sm">
+            <div class="flex items-center justify-between gap-2 px-3 py-2 flex-wrap"><span class="text-gray-600">月結基準日（月底 30/31 號）</span>${ackHtml(b.ackClosing)}</div>
+            <div class="flex items-center justify-between gap-2 px-3 py-2 flex-wrap"><span class="text-gray-600">發票與對帳單提供方式</span>${b.invoiceMethod ? `<span class="font-medium text-brand-dark">${escHtml(b.invoiceMethod)}</span>` : (isExisting ? `<span class="text-gray-400">—（既有供應商免填）</span>` : `<span class="text-red-500">✕ 未選擇</span>`)}</div>
+            <div class="flex items-center justify-between gap-2 px-3 py-2 flex-wrap"><span class="text-gray-600">發票開立資訊（抬頭／統編）</span>${ackHtml(b.ackInvoiceInfo)}</div>
+            <div class="flex items-center justify-between gap-2 px-3 py-2 flex-wrap"><span class="text-gray-600">📷 存摺照片（匯款帳戶）</span><span>${fileHtml(b.passbookPath, '', isExisting)}</span></div>
+            <div class="flex items-center justify-between gap-2 px-3 py-2 flex-wrap"><span class="text-gray-600">📄 產品報價單</span><span>${fileHtml(b.quotationPath, b.quotationName, false)}</span></div>
+        </div>`;
+}
+
+// 後台：查看請款檔案（Storage 需登入才能讀，取得下載網址後開新分頁）
+async function viewBillingFile(path) {
+    try {
+        const url = await storage.ref(path).getDownloadURL();
+        window.open(url, '_blank');
+    } catch (err) {
+        console.error(err);
+        showToast('檔案讀取失敗，請稍後再試', 'error');
+    }
 }
 
 // 後台：在編輯彈窗渲染商品清單（可編輯，改後由「儲存」一起寫回 Firestore）

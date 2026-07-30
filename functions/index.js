@@ -124,6 +124,14 @@ exports.contactSupplierAlert = onDocumentCreated(
       if (products.length > 15) lines.push(`　…還有 ${products.length - 15} 項`);
     }
 
+    // 請款須知與資料（前台第 3 步，2026-07-30 新增）
+    const b = d.billing;
+    if (b) {
+      lines.push('', '💰 <b>請款資料</b>');
+      if (b.invoiceMethod) lines.push(`　🧾 發票方式：${esc(b.invoiceMethod)}`);
+      lines.push(`　📷 存摺照片：${b.passbookPath ? '✅ 已上傳' : '未上傳'}　📄 報價單：${b.quotationPath ? '✅ 已上傳' : '未上傳'}`);
+    }
+
     if (v(d.note) !== '—') lines.push('', `📝 備註：${esc(v(d.note))}`);
     lines.push('', '👉 請到後台查看：https://jacky5453-beep.github.io/derlife-contact-system/');
 

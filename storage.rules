@@ -6,6 +6,13 @@ rules_version = '2';
 // contact-signed-quotations/，走下面的預設「需登入」規則即可，不需要公開寫入。
 service firebase.storage {
   match /b/{bucket}/o {
+    // 廠商請款資料上傳（2026-07-30 新增）：
+    // 前台廠商（未登入）填「請款須知與資料」第 3 步時上傳存摺照片／報價單。
+    // 只開放「新增」（不能覆蓋、刪除、讀取），單檔 10MB 上限；後台登入者走下方預設規則讀取。
+    match /contact-billing-uploads/{docId}/{fileName} {
+      allow create: if request.resource.size < 10 * 1024 * 1024;
+    }
+
     // 所有路徑：需登入才能讀寫（Firebase 預設安全規則）
     match /{allPaths=**} {
       allow read, write: if request.auth != null;
