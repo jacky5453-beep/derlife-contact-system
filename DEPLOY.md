@@ -22,7 +22,11 @@ git push origin main
 ## 主要功能
 - 前台：
   - 「我要賣貨」分兩條路徑：第一次提品（新廠商）／既有供應商
-  - 兩步驟 wizard：step1 廠商資料 → step2 商品資訊（17 欄位含八大營養標示）
+  - 三步驟 wizard：step1 廠商資料 → step2 商品資訊（17 欄位含八大營養標示）→ step3 請款須知與資料
+  - **Step 3 請款須知與資料（2026-07-30 新增）**：
+    - 新廠商完整版：①月結基準日（月底 30/31 號）已閱讀勾選（必勾）②發票與對帳單提供方式擇一（必選：電子發票及電子對帳單／開立紙本發票與紙本對帳單／隨貨附發票）③合作金庫匯款帳戶說明＋存摺封面照片上傳（必傳，前端壓縮最長邊 1600px JPEG）④產品報價單檔案上傳（必傳，PDF/圖片/Excel/Word，10MB 內）⑤發票開立資訊（得來素企業有限公司／統編 53613149）已閱讀勾選（必勾）
+    - 既有供應商精簡版：報價單必傳；存摺照片選填（匯款帳戶變更再傳）；須知條文收合為參考、不強制勾選
+    - 檔案上傳到 Storage `contact-billing-uploads/{docId}/`（匿名僅能新增、後台登入才能讀），廠商 doc 記 `billing` 欄位（勾選狀態＋發票方式＋檔案路徑）
   - 「我要買貨」客戶填表（含勾選想詢價產品）
 - 後台：資料審核、編輯、匯出
   - 廠商列表：「商品數」欄、「身份」徽章（新／既有）
@@ -41,7 +45,7 @@ git push origin main
 - **單廠商商品匯出**（編輯彈窗「匯出此廠商商品」／列表「匯出商品」）自 2026-07-03 起改輸出**完整商品資訊**（25 欄，含成分／營養／文案／目標客群等，檔名 `商品資訊_廠商_日期.xlsx`），供複製到官網建立商品；與上面 9 欄 ERP 匯入檔用途不同
 
 ## Firestore Collections
-- `contact-suppliers` — 廠商資料（含 `products` array、`submissionType: new/existing`、`quotationConfirmed`＝簽名版報價單記錄）
+- `contact-suppliers` — 廠商資料（含 `products` array、`submissionType: new/existing`、`quotationConfirmed`＝簽名版報價單記錄、`billing`＝請款須知與資料〔ackClosing/ackInvoiceInfo/invoiceMethod/passbookPath/quotationPath/quotationName/submittedAt〕）
 - `contact-customers` — 客戶資料
 - `contact-products` — 給客戶選擇的產品報價清單
 - `contact-whitelist` — 後台帳號白名單（含 role）
@@ -54,11 +58,13 @@ cd "/Users/jacky/Desktop/claude/claude code/規則主檔"
 ./deploy.sh derlife-audit
 ```
 
-## Storage 規則（2026-07-03，簽名版報價單存檔用）
+## Storage 規則（2026-07-03，簽名版報價單存檔用；2026-07-30 加請款上傳路徑）
 - **檔案：** `storage.rules`（本資料夾）；`firebase.json` 已加 `"storage": {...}`
 - ⚠️ Storage 規則是「整個 bucket 一份、整份覆蓋」。目前 derlife-audit 只有本系統用 Storage。
 - 規則＝Firebase 預設「需登入才能讀寫」。簽名版報價單由後台管理員（已登入）上傳到
   `contact-signed-quotations/{docId}/`，走此預設規則即可，**不對外公開**。
+- **`contact-billing-uploads/{docId}/{fileName}`（2026-07-30）：** 前台廠商（未登入）上傳存摺照片／報價單專用；
+  匿名僅能 `create`（不能覆蓋／刪除／讀取），單檔 10MB 上限；後台登入者走預設規則讀取（`viewBillingFile()` 取 downloadURL）。
 - **部署指令：**
   ```bash
   cd "/Users/jacky/Desktop/claude/claude code/廠商及客戶資料系統"
@@ -89,9 +95,13 @@ cd "/Users/jacky/Desktop/claude/claude code/規則主檔"
   ```
 
 ## 最後部署日期
+2026-07-30（前台廠商流程新增第 3 步「請款須知與資料」：月結基準日／發票方式擇一／存摺照片與報價單上傳／發票開立資訊，新廠商全必填、既有供應商精簡版〔報價單必傳、存摺選填〕；檔案上傳 Storage `contact-billing-uploads/`；後台編輯彈窗新增「💰 請款須知與資料」檢視區（勾選狀態＋查看檔案）；Telegram 廠商提品通知附請款資料狀態。同步部署：Firestore 規則〔validContactCreate 白名單加 `billing`〕＋ Storage 規則＋ Functions contact codebase）
+
+## 前次部署
 2026-07-17（修後台 Google 登入進不去：GitHub Pages 跨網域 `signInWithRedirect` 被瀏覽器第三方 cookie 政策擋掉，選完帳號跳回來登入結果遺失；改為 **popup 優先、被封鎖才 fallback 到 redirect**，popup／redirect 共用 `handleLoginResult()` 做白名單驗證＋進後台）
 
 ## 更新歷程
+- 2026-07-30 — 前台廠商 wizard 由兩步擴為三步，新增「請款須知與資料」（commit 39970fe）；Firestore 規則 `validContactCreate()` 欄位白名單加 `billing`（規則主檔 commit 034e7e2）；Storage 規則加 `contact-billing-uploads/` 匿名 create；Functions `contactSupplierAlert` 訊息附請款資料狀態
 - 2026-07-17 — 修後台 Google 登入：`signInWithPopup` 優先（跨網域 redirect 受第三方 cookie 封鎖影響），`auth/popup-blocked` 才 fallback `signInWithRedirect`；登入結果處理抽成 `handleLoginResult()` 兩路共用（commit bc7cda7）
 - 2026-07-06 — 廠商報價單：線上簽名改為**選填**——沒簽名也能下載 PDF（PDF 保留空白簽章欄），未簽名版不寫 `quotationConfirmed`／不上傳 Storage；「客戶方資訊」按鈕改名「我方資訊（得來素）」並補說明（該報價單中得來素是買方）（commit 1211183）
 - 2026-07-06 — 公司資訊設定新增「📌 預設注意事項」欄位（localStorage key `derlife-quote-company-info` 的 `notes`），開報價單自動帶入儲存版本，仍可針對個別客戶臨時調整（commit 81e2464）
