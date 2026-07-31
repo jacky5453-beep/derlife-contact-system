@@ -1480,6 +1480,11 @@ function startForm(type, mode) {
         step2.classList.add('hidden');
         step3.classList.add('hidden');
         document.getElementById('form-step-1').classList.remove('hidden');
+        // 客戶單頁用不到第 3 步，隱藏欄位的必填要拔掉，否則瀏覽器驗證卡在看不到的欄位、按送出沒反應
+        document.getElementById('billAckClosing').required = false;
+        document.getElementById('billAckInvoice').required = false;
+        const custHiddenRadio = document.querySelector('input[name="billInvoiceMethod"]');
+        if (custHiddenRadio) custHiddenRadio.required = false;
     }
 
     navigateTo('form');
