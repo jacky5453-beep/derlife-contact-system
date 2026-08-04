@@ -2494,12 +2494,15 @@ function b64urlEncode(str) {
 }
 
 // 組出上架流程系統的帶資料連結（整包商品資料塞在 ?import=）
-function buildLaunchFlowUrl(p, supplierName) {
+// billing = 該廠商的請款資料，只帶「產品報價單」的 Storage 路徑過去（存摺照片屬財務資料不外流）
+function buildLaunchFlowUrl(p, supplierName, billing) {
     const m = calcMarginRate(p.cost, p.retail);
     const payload = {
         v: 1,
         from: 'contact-system',
         supplier: supplierName || '',
+        quotationPath: (billing && billing.quotationPath) || '',
+        quotationName: (billing && billing.quotationName) || '',
         name: p.name || '', spec: p.spec || '', barcode: p.barcode || '',
         expiry: p.expiry || '', minOrder: p.minOrder || '', logistics: p.logistics || '',
         cost: p.cost || 0, retail: p.retail || 0, groupPrice: p.groupPrice || 0,
@@ -2514,9 +2517,9 @@ function buildLaunchFlowUrl(p, supplierName) {
 }
 
 // 開啟上架流程系統並帶入資料（共用：列表明細列／編輯彈窗商品卡）
-function openLaunchFlow(p, supplierName) {
+function openLaunchFlow(p, supplierName, billing) {
     if (!p || !p.name) { showToast('請先填商品品名再送出', 'error'); return; }
-    const url = buildLaunchFlowUrl(p, supplierName);
+    const url = buildLaunchFlowUrl(p, supplierName, billing);
     // 網址過長（成分／文案很長）時瀏覽器會擋，先擋下來提示
     if (url.length > 7500) {
         showToast('商品資料太長無法用連結帶入，請精簡成分或文案後再試', 'error');
@@ -2530,7 +2533,9 @@ function openLaunchFlow(p, supplierName) {
 function sendCardToLaunchFlow(btn) {
     const card = btn.closest('.edit-product-card');
     if (!card) return;
-    openLaunchFlow(readProductCard(card), currentEditBrandName || '');
+    const docId = document.getElementById('edit-doc-id').value;
+    const supplier = allData.find(d => d.id === docId);
+    openLaunchFlow(readProductCard(card), currentEditBrandName || '', supplier && supplier.billing);
 }
 
 // 列表展開明細列的「🚀 上架」：用已存的商品資料
@@ -2538,7 +2543,7 @@ function sendProductToLaunchFlow(docId, index) {
     const supplier = allData.find(d => d.id === docId);
     const p = supplier && (supplier.products || [])[index];
     if (!p) { showToast('找不到商品資料', 'error'); return; }
-    openLaunchFlow(p, supplier.shortName || supplier.name || '');
+    openLaunchFlow(p, supplier.shortName || supplier.name || '', supplier.billing);
 }
 
 // 組出文案生成系統的連結（帶商品資料當 URL 參數，沿用開團系統的參數格式）
