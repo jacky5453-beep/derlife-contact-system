@@ -2416,7 +2416,10 @@ function buildEditProductCard(p, i) {
                     </div>
                 </div>
                 <div class="mt-3 pt-2 border-t border-gray-100 flex items-center justify-between gap-2 flex-wrap">
-                    <a href="${escAttr(buildCopyGenUrl(p, currentEditBrandName || ''))}" target="_blank" rel="noopener" class="inline-flex items-center gap-1 px-3 py-1.5 rounded bg-orange-500 hover:bg-orange-600 text-white text-xs font-medium">✍️ 一鍵產生文案</a>
+                    <div class="flex items-center gap-2 flex-wrap">
+                        <a href="${escAttr(buildCopyGenUrl(p, currentEditBrandName || ''))}" target="_blank" rel="noopener" class="inline-flex items-center gap-1 px-3 py-1.5 rounded bg-orange-500 hover:bg-orange-600 text-white text-xs font-medium">✍️ 一鍵產生文案</a>
+                        <button type="button" onclick="sendCardToLaunchFlow(this)" title="把這筆商品資料整包帶到商品上架流程系統，建立新品專案時免再 key 一次" class="inline-flex items-center gap-1 px-3 py-1.5 rounded bg-brand-dark hover:bg-black text-white text-xs font-medium" style="color:#C3F000">🚀 送到上架流程</button>
+                    </div>
                     <button type="button" onclick="removeEditProductCard(this)" class="text-xs text-gray-400 border border-gray-200 rounded-md px-3 py-1 hover:text-red-500 hover:border-red-300 hover:bg-red-50 transition">✕ 移除此商品</button>
                 </div>
             </div>
@@ -2451,28 +2454,91 @@ function refreshEditProductIndexes() {
     });
 }
 
+// 後台：讀一張商品卡目前輸入框的值（未存檔的編輯也算）
+function readProductCard(card) {
+    const g = key => {
+        const el = card.querySelector(`[data-ekey="${key}"]`);
+        return el ? el.value.trim() : '';
+    };
+    const nutrition = {};
+    card.querySelectorAll('[data-enutr]').forEach(el => {
+        nutrition[el.dataset.enutr] = parseFloat(el.value) || 0;
+    });
+    const p = {
+        name: g('name'), ingredients: g('ingredients'), spec: g('spec'), barcode: g('barcode'),
+        expiry: g('expiry'), minOrder: g('minOrder'), logistics: g('logistics'),
+        imageLink: g('imageLink'), copy: g('copy'), targetAudience: g('targetAudience'),
+        scene: g('scene'), usp: g('usp'), texture: g('texture'), nutrition
+    };
+    ['cost', 'retail', 'groupPrice'].forEach(k => { p[k] = Number(g(k)) || 0; });
+    return p;
+}
+
 // 後台：從編輯彈窗的商品卡收集回商品陣列
 function collectEditProducts() {
     const cards = document.querySelectorAll('#edit-products-list .edit-product-card');
-    const numKeys = ['cost', 'retail', 'groupPrice'];
-    return Array.from(cards).map(card => {
-        const g = key => {
-            const el = card.querySelector(`[data-ekey="${key}"]`);
-            return el ? el.value.trim() : '';
-        };
-        const nutrition = {};
-        card.querySelectorAll('[data-enutr]').forEach(el => {
-            nutrition[el.dataset.enutr] = parseFloat(el.value) || 0;
-        });
-        const p = {
-            name: g('name'), ingredients: g('ingredients'), spec: g('spec'), barcode: g('barcode'),
-            expiry: g('expiry'), minOrder: g('minOrder'), logistics: g('logistics'),
-            imageLink: g('imageLink'), copy: g('copy'), targetAudience: g('targetAudience'),
-            scene: g('scene'), usp: g('usp'), texture: g('texture'), nutrition
-        };
-        numKeys.forEach(k => { p[k] = Number(g(k)) || 0; });
-        return p;
-    }).filter(p => p.name || p.ingredients || p.spec || p.barcode || p.cost > 0);
+    return Array.from(cards)
+        .map(readProductCard)
+        .filter(p => p.name || p.ingredients || p.spec || p.barcode || p.cost > 0);
+}
+
+// ===== 送到「商品上架流程系統」（免重 key）=====
+const LAUNCH_FLOW_URL = 'https://derlife-launch-flow.web.app/';
+
+// UTF-8 字串 → base64url（網址參數用）
+function b64urlEncode(str) {
+    const bytes = new TextEncoder().encode(str);
+    let bin = '';
+    bytes.forEach(b => { bin += String.fromCharCode(b); });
+    return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+
+// 組出上架流程系統的帶資料連結（整包商品資料塞在 ?import=）
+function buildLaunchFlowUrl(p, supplierName) {
+    const m = calcMarginRate(p.cost, p.retail);
+    const payload = {
+        v: 1,
+        from: 'contact-system',
+        supplier: supplierName || '',
+        name: p.name || '', spec: p.spec || '', barcode: p.barcode || '',
+        expiry: p.expiry || '', minOrder: p.minOrder || '', logistics: p.logistics || '',
+        cost: p.cost || 0, retail: p.retail || 0, groupPrice: p.groupPrice || 0,
+        marginRate: m == null ? null : Number((m * 100).toFixed(1)),
+        ingredients: p.ingredients || '', copy: p.copy || '',
+        targetAudience: p.targetAudience || '', scene: p.scene || '',
+        usp: p.usp || '', texture: p.texture || '', imageLink: p.imageLink || '',
+        nutrition: p.nutrition || {},
+        importedAt: new Date().toISOString()
+    };
+    return LAUNCH_FLOW_URL + '?import=' + b64urlEncode(JSON.stringify(payload));
+}
+
+// 開啟上架流程系統並帶入資料（共用：列表明細列／編輯彈窗商品卡）
+function openLaunchFlow(p, supplierName) {
+    if (!p || !p.name) { showToast('請先填商品品名再送出', 'error'); return; }
+    const url = buildLaunchFlowUrl(p, supplierName);
+    // 網址過長（成分／文案很長）時瀏覽器會擋，先擋下來提示
+    if (url.length > 7500) {
+        showToast('商品資料太長無法用連結帶入，請精簡成分或文案後再試', 'error');
+        return;
+    }
+    window.open(url, '_blank', 'noopener');
+    showToast(`已把《${p.name}》帶到商品上架流程系統`);
+}
+
+// 編輯彈窗商品卡的「🚀 送到上架流程」：讀當下輸入框的值（免先存檔）
+function sendCardToLaunchFlow(btn) {
+    const card = btn.closest('.edit-product-card');
+    if (!card) return;
+    openLaunchFlow(readProductCard(card), currentEditBrandName || '');
+}
+
+// 列表展開明細列的「🚀 上架」：用已存的商品資料
+function sendProductToLaunchFlow(docId, index) {
+    const supplier = allData.find(d => d.id === docId);
+    const p = supplier && (supplier.products || [])[index];
+    if (!p) { showToast('找不到商品資料', 'error'); return; }
+    openLaunchFlow(p, supplier.shortName || supplier.name || '');
 }
 
 // 組出文案生成系統的連結（帶商品資料當 URL 參數，沿用開團系統的參數格式）
@@ -2891,7 +2957,10 @@ function renderProductDetail(supplier) {
             <td class="py-1.5 pr-3 text-gray-400">${i + 1}</td>
             <td class="py-1.5 pr-3 font-medium">${escHtml(p.name || '')}</td>
             <td class="py-1.5 pr-3">
-                <a href="${escAttr(buildCopyGenUrl(p, brandName))}" target="_blank" rel="noopener" class="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-orange-500 hover:bg-orange-600 text-white text-xs font-medium whitespace-nowrap">✍️ 產生文案</a>
+                <div class="flex items-center gap-1">
+                    <a href="${escAttr(buildCopyGenUrl(p, brandName))}" target="_blank" rel="noopener" class="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-orange-500 hover:bg-orange-600 text-white text-xs font-medium whitespace-nowrap">✍️ 產生文案</a>
+                    <button type="button" onclick="sendProductToLaunchFlow('${supplier.id}', ${i})" title="整包帶到商品上架流程系統建立新品專案" class="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-brand-dark hover:bg-black text-xs font-medium whitespace-nowrap" style="color:#C3F000">🚀 上架</button>
+                </div>
             </td>
             <td class="py-1.5 pr-3">${escHtml(p.spec || '')}</td>
             <td class="py-1.5 pr-3">${escHtml(p.barcode || '')}</td>
