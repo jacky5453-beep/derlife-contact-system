@@ -13,6 +13,13 @@ service firebase.storage {
       allow create: if request.resource.size < 10 * 1024 * 1024;
     }
 
+    // 開團系統請款資料上傳（2026-07-31 新增）：
+    // 提品前台（未登入）第 3 步「請款須知」上傳存摺照片／報價單。
+    // 規則同上：只開放「新增」，單檔 10MB 上限；後台登入者走下方預設規則讀取。
+    match /groupbuy-billing-uploads/{docId}/{fileName} {
+      allow create: if request.resource.size < 10 * 1024 * 1024;
+    }
+
     // 所有路徑：需登入才能讀寫（Firebase 預設安全規則）
     match /{allPaths=**} {
       allow read, write: if request.auth != null;

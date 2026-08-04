@@ -2325,6 +2325,25 @@ function renderEditProducts(products) {
     list.innerHTML = products.map((p, i) => buildEditProductCard(p, i)).join('');
     // 空狀態提示：沒有商品時仍顯示「新增商品」按鈕，故不再用整段隱藏
     empty.classList.toggle('hidden', products.length > 0);
+    bindMarginLiveCalc(list);
+}
+
+// 編輯彈窗：改進貨價／末端售價時，標題列毛利徽章即時重算（事件委派，只綁一次）
+function bindMarginLiveCalc(list) {
+    if (list.dataset.marginBound) return;
+    list.dataset.marginBound = '1';
+    list.addEventListener('input', (e) => {
+        const key = e.target.dataset && e.target.dataset.ekey;
+        if (key !== 'cost' && key !== 'retail') return;
+        const card = e.target.closest('.edit-product-card');
+        if (!card) return;
+        const val = k => {
+            const el = card.querySelector(`[data-ekey="${k}"]`);
+            return el ? el.value : '';
+        };
+        const slot = card.querySelector('.ep-margin');
+        if (slot) slot.innerHTML = marginBadge(calcMarginRate(val('cost'), val('retail')));
+    });
 }
 
 // 小工具：產生一列可編輯欄位
@@ -2358,6 +2377,7 @@ function buildEditProductCard(p, i) {
                     <span class="ep-index inline-flex items-center justify-center w-6 h-6 rounded bg-brand-dark text-brand text-xs font-bold flex-shrink-0">${i + 1}</span>
                     <span class="font-medium text-sm text-brand-dark truncate">${escHtml(p.name || '（未命名商品）')}</span>
                     <span class="text-xs text-gray-400 truncate hidden sm:inline">${escHtml(p.spec || '')}</span>
+                    <span class="ep-margin flex-shrink-0" title="毛利率 =（末端售價−進貨價）÷末端售價">${marginBadge(calcMarginRate(p.cost, p.retail))}</span>
                 </div>
                 <span class="text-xs text-gray-400 group-open:rotate-180 transition-transform flex-shrink-0">▼</span>
             </summary>
@@ -2764,13 +2784,16 @@ function writeFullProductsExcel(suppliers, fileNameSuffix) {
     }
     const headers = [
         '廠商', '品名', '規格', '商品成分', '有效日期', '商品條碼',
-        '最少出貨量', '配送物流', '商品報價(含稅)', '末端售價', '團購價', '商品圖片',
+        '最少出貨量', '配送物流', '商品報價(含稅)', '末端售價', '團購價', '毛利率', '毛利金額', '商品圖片',
         '產品特色文案', '目標客群', '使用情境', '最大特色', '口感描述',
         '熱量(Kcal)', '蛋白質(g)', '脂肪(g)', '飽和脂肪(g)', '反式脂肪(g)', '碳水(g)', '糖(g)', '鈉(mg)'
     ];
     const aoa = [headers];
     rows.forEach(({ supplier: s, product: p }) => {
         const n = p.nutrition || {};
+        // 毛利：口徑同後台明細表（(末端售價−進貨價)÷末端售價），算不出來就留空
+        const mRate = calcMarginRate(p.cost, p.retail);
+        const mAmount = mRate == null ? '' : Number(p.retail) - Number(p.cost);
         aoa.push([
             s.shortName || s.name || '',
             p.name || '',
@@ -2783,6 +2806,8 @@ function writeFullProductsExcel(suppliers, fileNameSuffix) {
             p.cost || '',
             p.retail || '',
             p.groupPrice || '',
+            mRate == null ? '' : Number((mRate * 100).toFixed(1)),
+            mAmount,
             p.imageLink || '',
             p.copy || '',
             p.targetAudience || '',
@@ -2803,7 +2828,7 @@ function writeFullProductsExcel(suppliers, fileNameSuffix) {
     // 成分／文案欄位較寬，其餘給合理寬度
     ws['!cols'] = [
         { wch: 14 }, { wch: 26 }, { wch: 14 }, { wch: 50 }, { wch: 14 }, { wch: 16 },
-        { wch: 12 }, { wch: 12 }, { wch: 14 }, { wch: 12 }, { wch: 12 }, { wch: 30 },
+        { wch: 12 }, { wch: 12 }, { wch: 14 }, { wch: 12 }, { wch: 12 }, { wch: 10 }, { wch: 12 }, { wch: 30 },
         { wch: 40 }, { wch: 18 }, { wch: 18 }, { wch: 18 }, { wch: 18 },
         { wch: 10 }, { wch: 10 }, { wch: 10 }, { wch: 12 }, { wch: 12 }, { wch: 10 }, { wch: 10 }, { wch: 10 }
     ];
@@ -2827,6 +2852,35 @@ function exportSupplierProductsById(docId) {
     writeFullProductsExcel([supplier], safe);
 }
 
+// ===== 毛利計算（口徑同零售商品成本分析系統：(售價−進貨價)÷售價）=====
+function calcMarginRate(cost, price) {
+    const c = Number(cost), p = Number(price);
+    if (!isFinite(c) || !isFinite(p) || p <= 0) return null;
+    return (p - c) / p;
+}
+// 毛利率紅黃綠分級：≥40% 綠／≥30% 黃／其餘紅
+function marginBadgeClass(m) {
+    if (m == null) return 'bg-gray-100 text-gray-400';
+    if (m >= 0.4) return 'bg-green-100 text-green-700';
+    if (m >= 0.3) return 'bg-yellow-100 text-yellow-700';
+    return 'bg-red-100 text-red-600';
+}
+// 毛利小徽章（可直接塞進表格或標題列）
+function marginBadge(m) {
+    const txt = m == null ? '—' : (m * 100).toFixed(1) + '%';
+    return `<span class="inline-block px-1.5 py-0.5 rounded font-bold text-xs ${marginBadgeClass(m)}">${txt}</span>`;
+}
+// 商品明細表的毛利格：主數字＝末端售價毛利，下方補毛利金額；有團購價再補一行團購毛利
+function marginCellHtml(p) {
+    const m = calcMarginRate(p.cost, p.retail);
+    if (m == null) return '<span class="text-gray-300">—</span>';
+    const amount = Number(p.retail) - Number(p.cost);
+    const g = calcMarginRate(p.cost, p.groupPrice);
+    const groupLine = (g != null && Number(p.groupPrice) !== Number(p.retail))
+        ? `<div class="text-[10px] text-gray-500 mt-0.5">團購 ${(g * 100).toFixed(1)}%</div>` : '';
+    return `${marginBadge(m)}<div class="text-[10px] text-gray-400 mt-0.5">${amount >= 0 ? '+' : '−'}$${Math.abs(amount).toLocaleString()}</div>${groupLine}`;
+}
+
 // 展開列內容：把此廠商的商品列成小表格（僅後台檢視用，含價格）
 function renderProductDetail(supplier) {
     const products = supplier.products || [];
@@ -2844,10 +2898,13 @@ function renderProductDetail(supplier) {
             <td class="py-1.5 pr-3">${escHtml(p.expiry || '')}</td>
             <td class="py-1.5 pr-3 text-right">${p.cost != null && p.cost !== '' ? escHtml(String(p.cost)) : '—'}</td>
             <td class="py-1.5 pr-3 text-right">${p.retail != null && p.retail !== '' ? escHtml(String(p.retail)) : '—'}</td>
+            <td class="py-1.5 pr-3 text-right whitespace-nowrap">${marginCellHtml(p)}</td>
         </tr>`).join('');
     return `
         <div class="flex items-center justify-between mb-2">
-            <span class="text-sm font-medium text-green-800">📦 ${escHtml(supplier.shortName || supplier.name || '')} 這次提報的商品（${products.length} 項）</span>
+            <span class="text-sm font-medium text-green-800">📦 ${escHtml(supplier.shortName || supplier.name || '')} 這次提報的商品（${products.length} 項）
+                <span class="text-[11px] font-normal text-gray-500 ml-1">｜毛利率 =（末端售價−進貨價）÷末端售價，<span class="text-green-700">綠 ≥40%</span>／<span class="text-yellow-600">黃 ≥30%</span>／<span class="text-red-600">紅 &lt;30%</span></span>
+            </span>
             <button onclick="exportSupplierProductsById('${supplier.id}')" class="px-3 py-1 rounded bg-green-600 hover:bg-green-700 text-white text-xs font-medium">⬇️ 匯出這些商品</button>
         </div>
         <div class="overflow-x-auto">
@@ -2862,6 +2919,7 @@ function renderProductDetail(supplier) {
                         <th class="py-1.5 pr-3">有效日期</th>
                         <th class="py-1.5 pr-3 text-right">進貨價(含稅)</th>
                         <th class="py-1.5 pr-3 text-right">末端售價</th>
+                        <th class="py-1.5 pr-3 text-right" title="毛利率 =（末端售價 − 進貨價）÷ 末端售價">毛利率</th>
                     </tr>
                 </thead>
                 <tbody>${rows}</tbody>

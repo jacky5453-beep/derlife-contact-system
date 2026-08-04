@@ -31,6 +31,7 @@ git push origin main
 - 後台：資料審核、編輯、匯出
   - 廠商列表：「商品數」欄、「身份」徽章（新／既有）
   - **廠商列表點「📦 N ▾」徽章可就地展開商品明細，並提供「匯出商品」「⬇️ 匯出這些商品」快速鈕（免進編輯）**（2026-07-03）
+  - **商品明細多一欄「毛利率」**（2026-08-04）：口徑＝（末端售價−進貨價）÷末端售價，同零售商品成本分析系統；下方小字附毛利金額，有填團購價再補一行團購毛利；紅黃綠分級（綠 ≥40%／黃 ≥30%／紅 <30%）。編輯彈窗商品卡標題列也帶毛利徽章，改價即時重算
   - **編輯彈窗的商品資料可就地編輯（全欄位 + 八大營養），可新增／移除商品，按「儲存」一起寫回 Firestore**（2026-07-03）
   - **廠商報價單產生器**（編輯彈窗「📄 產生報價單」，manager+）：依廠商商品自動帶入商品名(規格)/數量/單價（預設商品報價含稅、可改），5% 稅金可切換，算合計/稅金/總計；**canvas 線上簽名（客戶簽章）**；html2canvas+jsPDF 產出對應紙本版型的簽名版 PDF → 下載留存 + 上傳 Storage `contact-signed-quotations/{docId}/` + 廠商 doc 記 `quotationConfirmed`；已確認報價可在編輯彈窗再下載（2026-07-03）
   - **每個商品明細底部有「✍️ 一鍵產生文案」按鈕，帶商品資料開啟文案生成系統**（2026-07-03，沿用開團系統的 URL 參數格式）
@@ -95,12 +96,17 @@ cd "/Users/jacky/Desktop/claude/claude code/規則主檔"
   ```
 
 ## 最後部署日期
+
+- 2026-08-04（廠商提品商品明細加「毛利率」欄：（末端售價−進貨價）÷末端售價＋毛利金額＋團購毛利，紅黃綠分級；編輯彈窗商品卡毛利徽章即時試算；完整資訊匯出 Excel 加「毛利率」「毛利金額」兩欄〔ERP 匯入檔 9 欄格式不動〕）
+- 2026-07-31（🐛 修客戶表單「送出資料」沒反應：7/30 新增廠商 Step 3 後，客戶單頁模式沒拔掉隱藏請款欄位〔billAckClosing／billInvoiceMethod／billAckInvoice〕的 `required`，瀏覽器 HTML5 驗證卡在看不見的欄位、無法聚焦提示 → 按送出完全靜默；`startForm` 客戶分支補拔 required，廠商新／既有模式不受影響；commit 8dc4213）
+- 2026-07-31（資安稽核：Tailwind CDN 鎖定 3.4.17 版，避免 CDN 自動升級導致系統壞掉；僅動一行 script src）
 2026-07-30（前台廠商流程新增第 3 步「請款須知與資料」：月結基準日／發票方式擇一／存摺照片與報價單上傳／發票開立資訊，新廠商全必填、既有供應商精簡版〔報價單必傳、存摺選填〕；檔案上傳 Storage `contact-billing-uploads/`；後台編輯彈窗新增「💰 請款須知與資料」檢視區（勾選狀態＋查看檔案）；Telegram 廠商提品通知附請款資料狀態。同步部署：Firestore 規則〔validContactCreate 白名單加 `billing`〕＋ Storage 規則＋ Functions contact codebase）
 
 ## 前次部署
 2026-07-17（修後台 Google 登入進不去：GitHub Pages 跨網域 `signInWithRedirect` 被瀏覽器第三方 cookie 政策擋掉，選完帳號跳回來登入結果遺失；改為 **popup 優先、被封鎖才 fallback 到 redirect**，popup／redirect 共用 `handleLoginResult()` 做白名單驗證＋進後台）
 
 ## 更新歷程
+- 2026-07-31 — 修客戶表單送出靜默失敗：客戶模式拔掉隱藏請款欄位的 required（commit 8dc4213；受影響期間 7/30～7/31 客戶端「我要買貨」表單無法送出）
 - 2026-07-30 — 前台廠商 wizard 由兩步擴為三步，新增「請款須知與資料」（commit 39970fe）；Firestore 規則 `validContactCreate()` 欄位白名單加 `billing`（規則主檔 commit 034e7e2）；Storage 規則加 `contact-billing-uploads/` 匿名 create；Functions `contactSupplierAlert` 訊息附請款資料狀態
 - 2026-07-17 — 修後台 Google 登入：`signInWithPopup` 優先（跨網域 redirect 受第三方 cookie 封鎖影響），`auth/popup-blocked` 才 fallback `signInWithRedirect`；登入結果處理抽成 `handleLoginResult()` 兩路共用（commit bc7cda7）
 - 2026-07-06 — 廠商報價單：線上簽名改為**選填**——沒簽名也能下載 PDF（PDF 保留空白簽章欄），未簽名版不寫 `quotationConfirmed`／不上傳 Storage；「客戶方資訊」按鈕改名「我方資訊（得來素）」並補說明（該報價單中得來素是買方）（commit 1211183）
