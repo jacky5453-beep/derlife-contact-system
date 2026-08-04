@@ -1299,11 +1299,18 @@ function addSupplierProduct() {
             </div>
         </div>
 
-        <!-- 圖片連結 + 文案 -->
+        <!-- 加熱方式／食用建議 -->
         <div class="mt-4">
-            <label class="block text-sm font-medium text-gray-700 mb-1">商品圖片連結</label>
+            <label class="block text-sm font-medium text-gray-700 mb-1">加熱方式／食用建議</label>
+            <textarea data-key="usage" rows="2" placeholder="例：冷凍保存，食用前微波 3 分鐘（600W）或整包放入滾水煮 5 分鐘；建議搭配白飯、可加蛋" class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-brand focus:border-brand outline-none"></textarea>
+            <p class="text-xs text-gray-400 mt-1">加熱／烹調方式、食用份量、保存與退冰建議等，會用在官網商品頁與包裝說明</p>
+        </div>
+
+        <!-- 商品與素材連結 + 文案 -->
+        <div class="mt-4">
+            <label class="block text-sm font-medium text-gray-700 mb-1">商品與素材連結</label>
             <input type="text" data-key="imageLink" placeholder="https://drive.google.com/drive/folders/..." class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-brand focus:border-brand outline-none">
-            <p class="text-xs text-gray-400 mt-1">請將商品圖片上傳至 Google Drive，設定「知道連結的人皆可檢視」後貼上連結</p>
+            <p class="text-xs text-gray-400 mt-1">商品圖片、包裝照、影片、型錄等素材請上傳至 Google Drive，設定「知道連結的人皆可檢視」後貼上連結</p>
         </div>
         <div class="mt-4">
             <label class="block text-sm font-medium text-gray-700 mb-1">產品特色文案</label>
@@ -1377,6 +1384,7 @@ function collectSupplierProducts() {
             cost: Number(g('cost')) || 0,
             retail: Number(g('retail')) || 0,
             groupPrice: Number(g('groupPrice')) || 0,
+            usage: g('usage'),
             imageLink: g('imageLink'),
             copy: g('copy'),
             targetAudience: g('targetAudience'),
@@ -2395,7 +2403,8 @@ function buildEditProductCard(p, i) {
                     ${epField('商品報價(含稅) NT$', 'cost', p.cost, {type: 'number'})}
                     ${epField('末端售價 NT$', 'retail', p.retail, {type: 'number'})}
                     ${epField('團購價 NT$', 'groupPrice', p.groupPrice, {type: 'number'})}
-                    ${epField('商品圖片連結', 'imageLink', p.imageLink, {full: true})}
+                    ${epField('加熱方式／食用建議', 'usage', p.usage, {full: true, textarea: true})}
+                    ${epField('商品與素材連結', 'imageLink', p.imageLink, {full: true})}
                     ${epField('產品特色文案', 'copy', p.copy, {full: true, textarea: true})}
                     ${epField('目標客群', 'targetAudience', p.targetAudience)}
                     ${epField('使用情境', 'scene', p.scene)}
@@ -2469,7 +2478,7 @@ function readProductCard(card) {
     const p = {
         name: g('name'), ingredients: g('ingredients'), spec: g('spec'), barcode: g('barcode'),
         expiry: g('expiry'), minOrder: g('minOrder'), logistics: g('logistics'),
-        imageLink: g('imageLink'), copy: g('copy'), targetAudience: g('targetAudience'),
+        usage: g('usage'), imageLink: g('imageLink'), copy: g('copy'), targetAudience: g('targetAudience'),
         scene: g('scene'), usp: g('usp'), texture: g('texture'), nutrition
     };
     ['cost', 'retail', 'groupPrice'].forEach(k => { p[k] = Number(g(k)) || 0; });
@@ -2511,7 +2520,7 @@ function buildLaunchFlowUrl(p, supplierName, billing) {
         marginRate: m == null ? null : Number((m * 100).toFixed(1)),
         ingredients: p.ingredients || '', copy: p.copy || '',
         targetAudience: p.targetAudience || '', scene: p.scene || '',
-        usp: p.usp || '', texture: p.texture || '', imageLink: p.imageLink || '',
+        usp: p.usp || '', texture: p.texture || '', usage: p.usage || '', imageLink: p.imageLink || '',
         nutrition: p.nutrition || {},
         importedAt: new Date().toISOString()
     };
@@ -2857,7 +2866,8 @@ function writeFullProductsExcel(suppliers, fileNameSuffix) {
     }
     const headers = [
         '廠商', '品名', '規格', '商品成分', '有效日期', '商品條碼',
-        '最少出貨量', '配送物流', '商品報價(含稅)', '末端售價', '團購價', '毛利率', '毛利金額', '商品圖片',
+        '最少出貨量', '配送物流', '商品報價(含稅)', '末端售價', '團購價', '毛利率', '毛利金額',
+        '加熱方式／食用建議', '商品與素材連結',
         '產品特色文案', '目標客群', '使用情境', '最大特色', '口感描述',
         '熱量(Kcal)', '蛋白質(g)', '脂肪(g)', '飽和脂肪(g)', '反式脂肪(g)', '碳水(g)', '糖(g)', '鈉(mg)'
     ];
@@ -2881,6 +2891,7 @@ function writeFullProductsExcel(suppliers, fileNameSuffix) {
             p.groupPrice || '',
             mRate == null ? '' : Number((mRate * 100).toFixed(1)),
             mAmount,
+            p.usage || '',
             p.imageLink || '',
             p.copy || '',
             p.targetAudience || '',
@@ -2901,7 +2912,8 @@ function writeFullProductsExcel(suppliers, fileNameSuffix) {
     // 成分／文案欄位較寬，其餘給合理寬度
     ws['!cols'] = [
         { wch: 14 }, { wch: 26 }, { wch: 14 }, { wch: 50 }, { wch: 14 }, { wch: 16 },
-        { wch: 12 }, { wch: 12 }, { wch: 14 }, { wch: 12 }, { wch: 12 }, { wch: 10 }, { wch: 12 }, { wch: 30 },
+        { wch: 12 }, { wch: 12 }, { wch: 14 }, { wch: 12 }, { wch: 12 }, { wch: 10 }, { wch: 12 },
+        { wch: 40 }, { wch: 30 },
         { wch: 40 }, { wch: 18 }, { wch: 18 }, { wch: 18 }, { wch: 18 },
         { wch: 10 }, { wch: 10 }, { wch: 10 }, { wch: 12 }, { wch: 12 }, { wch: 10 }, { wch: 10 }, { wch: 10 }
     ];
