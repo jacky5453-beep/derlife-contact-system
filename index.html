@@ -1220,10 +1220,14 @@ function addSupplierProduct() {
                 <input type="text" data-key="spec" placeholder="例：90g/瓶" class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-brand focus:border-brand outline-none">
             </div>
             <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">產地 *</label>
+                <input type="text" data-key="origin" placeholder="例：台灣 或 越南（進口商品請填原產國）" class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-brand focus:border-brand outline-none">
+            </div>
+            <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">最少出貨量 *</label>
                 <input type="text" data-key="minOrder" placeholder="例：12 瓶 或 1 箱" class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-brand focus:border-brand outline-none">
             </div>
-            <div class="sm:col-span-2">
+            <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">配送物流公司 *</label>
                 <input type="text" data-key="logistics" placeholder="例：新竹物流、黑貓宅急便、自送" class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-brand focus:border-brand outline-none">
             </div>
@@ -1379,6 +1383,7 @@ function collectSupplierProducts() {
             nutrition,
             barcode: g('barcode'),
             spec: g('spec'),
+            origin: g('origin'),
             minOrder: g('minOrder'),
             logistics: g('logistics'),
             cost: Number(g('cost')) || 0,
@@ -2398,6 +2403,7 @@ function buildEditProductCard(p, i) {
                     ${epField('商品規格', 'spec', p.spec)}
                     ${epField('商品條碼', 'barcode', p.barcode)}
                     ${epField('有效日期', 'expiry', p.expiry)}
+                    ${epField('產地', 'origin', p.origin)}
                     ${epField('最少出貨量', 'minOrder', p.minOrder)}
                     ${epField('配送物流', 'logistics', p.logistics, {full: true})}
                     ${epField('商品報價(含稅) NT$', 'cost', p.cost, {type: 'number'})}
@@ -2477,7 +2483,7 @@ function readProductCard(card) {
     });
     const p = {
         name: g('name'), ingredients: g('ingredients'), spec: g('spec'), barcode: g('barcode'),
-        expiry: g('expiry'), minOrder: g('minOrder'), logistics: g('logistics'),
+        expiry: g('expiry'), origin: g('origin'), minOrder: g('minOrder'), logistics: g('logistics'),
         usage: g('usage'), imageLink: g('imageLink'), copy: g('copy'), targetAudience: g('targetAudience'),
         scene: g('scene'), usp: g('usp'), texture: g('texture'), nutrition
     };
@@ -2515,7 +2521,7 @@ function buildLaunchFlowUrl(p, supplierName, billing) {
         quotationPath: (billing && billing.quotationPath) || '',
         quotationName: (billing && billing.quotationName) || '',
         name: p.name || '', spec: p.spec || '', barcode: p.barcode || '',
-        expiry: p.expiry || '', minOrder: p.minOrder || '', logistics: p.logistics || '',
+        expiry: p.expiry || '', origin: p.origin || '', minOrder: p.minOrder || '', logistics: p.logistics || '',
         cost: p.cost || 0, retail: p.retail || 0, groupPrice: p.groupPrice || 0,
         marginRate: m == null ? null : Number((m * 100).toFixed(1)),
         ingredients: p.ingredients || '', copy: p.copy || '',
@@ -2865,7 +2871,7 @@ function writeFullProductsExcel(suppliers, fileNameSuffix) {
         return false;
     }
     const headers = [
-        '廠商', '品名', '規格', '商品成分', '有效日期', '商品條碼',
+        '廠商', '品名', '規格', '商品成分', '有效日期', '商品條碼', '產地',
         '最少出貨量', '配送物流', '商品報價(含稅)', '末端售價', '團購價', '毛利率', '毛利金額',
         '加熱方式／食用建議', '商品與素材連結',
         '產品特色文案', '目標客群', '使用情境', '最大特色', '口感描述',
@@ -2884,6 +2890,7 @@ function writeFullProductsExcel(suppliers, fileNameSuffix) {
             p.ingredients || '',
             p.expiry || '',
             p.barcode || '',
+            p.origin || '',
             p.minOrder || '',
             p.logistics || '',
             p.cost || '',
@@ -2911,7 +2918,7 @@ function writeFullProductsExcel(suppliers, fileNameSuffix) {
     const ws = XLSX.utils.aoa_to_sheet(aoa);
     // 成分／文案欄位較寬，其餘給合理寬度
     ws['!cols'] = [
-        { wch: 14 }, { wch: 26 }, { wch: 14 }, { wch: 50 }, { wch: 14 }, { wch: 16 },
+        { wch: 14 }, { wch: 26 }, { wch: 14 }, { wch: 50 }, { wch: 14 }, { wch: 16 }, { wch: 12 },
         { wch: 12 }, { wch: 12 }, { wch: 14 }, { wch: 12 }, { wch: 12 }, { wch: 10 }, { wch: 12 },
         { wch: 40 }, { wch: 30 },
         { wch: 40 }, { wch: 18 }, { wch: 18 }, { wch: 18 }, { wch: 18 },
