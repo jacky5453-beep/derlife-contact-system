@@ -1043,6 +1043,22 @@
 </div>
 
 <!-- ===== 廠商報價單產生器（含線上簽名） ===== -->
+<!-- 把歸檔檔案送到「商品上架流程系統」已在跑的專案 -->
+<div id="modal-send-project" class="fixed inset-0 z-[60] hidden">
+    <div class="absolute inset-0 bg-black/40" onclick="closeSendProjectModal()"></div>
+    <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[85vh] overflow-y-auto p-6">
+        <div class="flex items-center justify-between mb-3">
+            <h3 class="text-xl font-bold text-brand-dark">📤 送到上架專案</h3>
+            <button onclick="closeSendProjectModal()" class="text-gray-400 hover:text-gray-600">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+            </button>
+        </div>
+        <p class="text-sm text-gray-500 mb-1">把 <span id="send-project-filename" class="font-medium text-brand-dark"></span> 掛到商品上架流程系統的專案，接力的人在那邊就看得到。</p>
+        <p class="text-xs text-gray-400 mb-4">檔案不會重傳（只掛連結，秒完成），正本仍留在這筆廠商資料。</p>
+        <div id="send-project-list"></div>
+    </div>
+</div>
+
 <div id="modal-supplier-quote" class="fixed inset-0 z-50 hidden">
     <div class="absolute inset-0 bg-black/40" onclick="closeSupplierQuoteModal()"></div>
     <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-white rounded-2xl shadow-2xl w-full max-w-3xl max-h-[92vh] overflow-y-auto p-6">
@@ -2385,6 +2401,7 @@ function renderSupplierArchiveSection(docId, item) {
                     </div>
                     <div class="flex items-center gap-2 flex-shrink-0">
                         <button type="button" onclick="viewBillingFile('${escAttr(f.path)}')" class="px-3 py-1 rounded-lg text-xs font-medium text-white" style="background: #16a34a;">🔍 查看</button>
+                        <button type="button" onclick="openSendProjectModal('${escAttr(docId)}', '${escAttr(f.path)}')" class="px-3 py-1 rounded-lg text-xs font-bold text-brand-dark" style="background: #FFAA00;" title="掛到商品上架流程系統已經在跑的專案">📤 送到專案</button>
                         <button type="button" onclick="deleteArchiveFile('${escAttr(docId)}', '${escAttr(f.path)}')" class="px-2 py-1 rounded-lg text-xs font-medium text-red-600 border border-red-300 hover:bg-red-50" title="刪除這個檔案">🗑</button>
                     </div>
                 </div>`;
@@ -2484,6 +2501,99 @@ async function deleteArchiveFile(docId, path) {
     } catch (err) {
         console.error(err);
         showToast('刪除失敗，請稍後再試', 'error');
+    }
+}
+
+// ===== 後台：把歸檔檔案送到「商品上架流程系統」已經在跑的專案 =====
+// ?import= 只在建立專案那一刻帶一次資料，之後廠商補寄的檔案得走這條路補掛上去。
+// 兩系統同一個 Firebase project，這裡直接寫對方的 launch-products；
+// ⚠️ 規則要求操作者同時在 launch-flow-whitelist，不在的話會被擋（下面有提示）
+
+const LAUNCH_PRODUCTS_COL = 'launch-products';
+let sendProjectCtx = null; // { docId, path, name, size }
+
+async function openSendProjectModal(docId, path) {
+    const supplier = allData.find(d => d.id === docId);
+    const file = (supplier && supplier.quoteArchive || []).find(f => f.path === path);
+    if (!file) { showToast('找不到這個檔案', 'error'); return; }
+    sendProjectCtx = { docId, path, name: file.name || '', size: file.size || 0,
+                       supplier: supplier.shortName || supplier.name || '' };
+
+    document.getElementById('send-project-filename').textContent = file.name || '這個檔案';
+    const list = document.getElementById('send-project-list');
+    list.innerHTML = `<div class="text-sm text-gray-400 py-4 text-center">讀取上架專案中...</div>`;
+    document.getElementById('modal-send-project').classList.remove('hidden');
+
+    try {
+        const snap = await db.collection(LAUNCH_PRODUCTS_COL).get();
+        const items = [];
+        snap.forEach(d => items.push({ id: d.id, ...d.data() }));
+        // 進行中的排前面，封存的不列
+        const active = items.filter(x => x.status === 'active');
+        const launched = items.filter(x => x.status === 'launched');
+        active.sort((a, b) => String(b.lastActivityAt || '').localeCompare(String(a.lastActivityAt || '')));
+        launched.sort((a, b) => String(b.launchedAt || '').localeCompare(String(a.launchedAt || '')));
+
+        if (active.length === 0 && launched.length === 0) {
+            list.innerHTML = `<div class="text-sm text-gray-400 py-4 text-center">上架流程系統目前沒有可掛的專案</div>`;
+            return;
+        }
+        const rowsHtml = (arr, badge, badgeCls) => arr.map(x => {
+            const has = (x.attachments || []).some(f => f.path === sendProjectCtx.path);
+            return `<button type="button" ${has ? 'disabled' : ''} onclick="sendFileToProject('${escAttr(x.id)}')"
+                class="w-full text-left px-3 py-2.5 border border-gray-200 rounded-lg mb-2 flex items-center justify-between gap-2 ${has ? 'opacity-50 cursor-not-allowed' : 'hover:border-brand hover:bg-brand/10'}">
+                <span class="min-w-0">
+                    <span class="font-medium text-brand-dark break-all">${escHtml(x.name || '（未命名）')}</span>
+                    <span class="inline-block px-1.5 py-0.5 rounded text-[10px] ${badgeCls} align-middle ml-1">${badge}</span>
+                    ${has ? '<span class="block text-[11px] text-gray-400 mt-0.5">這個檔案已經在這檔專案裡了</span>' : ''}
+                </span>
+                <span class="text-xs text-gray-400 flex-shrink-0">${has ? '✓' : '送過去 →'}</span>
+            </button>`;
+        }).join('');
+        list.innerHTML =
+            (active.length ? `<div class="text-xs text-gray-500 mb-1">進行中</div>${rowsHtml(active, '進行中', 'bg-brand/30 text-brand-dark')}` : '') +
+            (launched.length ? `<div class="text-xs text-gray-500 mb-1 mt-3">已上架</div>${rowsHtml(launched, '已上架', 'bg-green-100 text-green-700')}` : '');
+    } catch (err) {
+        console.error(err);
+        // 不在對方白名單是最常見的原因，講清楚要找誰處理
+        const denied = err && err.code === 'permission-denied';
+        list.innerHTML = `<div class="bg-red-50 border border-red-200 rounded-lg px-3 py-3 text-sm text-red-600">
+            ${denied
+                ? '讀不到上架專案：你的帳號不在「商品上架流程系統」的白名單。<br><span class="text-xs">請小關到該系統的「👥 帳號管理」把你加進去後再試。</span>'
+                : '讀取失敗：' + escHtml(err.message || '')}
+        </div>`;
+    }
+}
+
+function closeSendProjectModal() {
+    document.getElementById('modal-send-project').classList.add('hidden');
+    sendProjectCtx = null;
+}
+
+// 真的把檔案掛到指定專案（只寫連結，檔案不重傳）
+async function sendFileToProject(productId) {
+    if (!sendProjectCtx) return;
+    const c = sendProjectCtx;
+    try {
+        await db.collection(LAUNCH_PRODUCTS_COL).doc(productId).update({
+            attachments: firebase.firestore.FieldValue.arrayUnion({
+                path: c.path,
+                name: c.name,
+                size: c.size,
+                addedAt: new Date().toISOString(),
+                addedBy: (currentUser && currentUser.email) || '',
+                from: 'contact-system',
+                supplier: c.supplier
+            }),
+            lastActivityAt: new Date().toISOString()
+        });
+        closeSendProjectModal();
+        showToast('已送到上架專案，對方頁面會即時出現');
+    } catch (err) {
+        console.error(err);
+        showToast(err.code === 'permission-denied'
+            ? '你的帳號不在商品上架流程系統白名單，請小關加入後再試'
+            : '送出失敗，請稍後再試', 'error');
     }
 }
 
