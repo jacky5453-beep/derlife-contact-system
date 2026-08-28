@@ -2675,9 +2675,22 @@ function b64urlEncode(str) {
     return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 }
 
+// 一次最多帶幾份補充歸檔檔案過去（網址有長度上限，超過會擋下）
+const LAUNCH_FLOW_MAX_FILES = 5;
+
+// 取這個廠商要帶去上架流程的補充歸檔檔案（新的排前面，最多 LAUNCH_FLOW_MAX_FILES 份）
+function pickArchiveForLaunch(archive) {
+    return (Array.isArray(archive) ? archive.slice() : [])
+        .filter(f => f && f.path)
+        .sort((a, b) => String(b.uploadedAt || '').localeCompare(String(a.uploadedAt || '')))
+        .slice(0, LAUNCH_FLOW_MAX_FILES)
+        .map(f => ({ p: f.path, n: f.name || '' }));  // 鍵名縮短，省網址長度
+}
+
 // 組出上架流程系統的帶資料連結（整包商品資料塞在 ?import=）
 // billing = 該廠商的請款資料，只帶「產品報價單」的 Storage 路徑過去（存摺照片屬財務資料不外流）
-function buildLaunchFlowUrl(p, supplierName, billing) {
+// archive = 後台歸檔的補充報價單（quoteArchive），一併帶過去讓接力的人看得到
+function buildLaunchFlowUrl(p, supplierName, billing, archive) {
     const m = calcMarginRate(p.cost, p.retail);
     const payload = {
         v: 1,
@@ -2685,6 +2698,7 @@ function buildLaunchFlowUrl(p, supplierName, billing) {
         supplier: supplierName || '',
         quotationPath: (billing && billing.quotationPath) || '',
         quotationName: (billing && billing.quotationName) || '',
+        quoteFiles: pickArchiveForLaunch(archive),
         name: p.name || '', spec: p.spec || '', barcode: p.barcode || '',
         expiry: p.expiry || '', origin: p.origin || '', minOrder: p.minOrder || '', logistics: p.logistics || '',
         cost: p.cost || 0, retail: p.retail || 0, groupPrice: p.groupPrice || 0,
@@ -2699,16 +2713,21 @@ function buildLaunchFlowUrl(p, supplierName, billing) {
 }
 
 // 開啟上架流程系統並帶入資料（共用：列表明細列／編輯彈窗商品卡）
-function openLaunchFlow(p, supplierName, billing) {
+function openLaunchFlow(p, supplierName, billing, archive) {
     if (!p || !p.name) { showToast('請先填商品品名再送出', 'error'); return; }
-    const url = buildLaunchFlowUrl(p, supplierName, billing);
+    const url = buildLaunchFlowUrl(p, supplierName, billing, archive);
     // 網址過長（成分／文案很長）時瀏覽器會擋，先擋下來提示
     if (url.length > 7500) {
         showToast('商品資料太長無法用連結帶入，請精簡成分或文案後再試', 'error');
         return;
     }
     window.open(url, '_blank', 'noopener');
-    showToast(`已把《${p.name}》帶到商品上架流程系統`);
+    // 歸檔檔案超過上限時要講清楚只帶了幾份，不要讓人以為全部都過去了
+    const total = (Array.isArray(archive) ? archive.filter(f => f && f.path).length : 0);
+    const sent = Math.min(total, LAUNCH_FLOW_MAX_FILES);
+    const fileMsg = total === 0 ? ''
+        : (total > sent ? `（附最新 ${sent} 份補充檔案，另 ${total - sent} 份未帶，請到廠商資料查看）` : `（附 ${sent} 份補充檔案）`);
+    showToast(`已把《${p.name}》帶到商品上架流程系統${fileMsg}`);
 }
 
 // 編輯彈窗商品卡的「🚀 送到上架流程」：讀當下輸入框的值（免先存檔）
@@ -2717,7 +2736,7 @@ function sendCardToLaunchFlow(btn) {
     if (!card) return;
     const docId = document.getElementById('edit-doc-id').value;
     const supplier = allData.find(d => d.id === docId);
-    openLaunchFlow(readProductCard(card), currentEditBrandName || '', supplier && supplier.billing);
+    openLaunchFlow(readProductCard(card), currentEditBrandName || '', supplier && supplier.billing, supplier && supplier.quoteArchive);
 }
 
 // 列表展開明細列的「🚀 上架」：用已存的商品資料
@@ -2725,7 +2744,7 @@ function sendProductToLaunchFlow(docId, index) {
     const supplier = allData.find(d => d.id === docId);
     const p = supplier && (supplier.products || [])[index];
     if (!p) { showToast('找不到商品資料', 'error'); return; }
-    openLaunchFlow(p, supplier.shortName || supplier.name || '', supplier.billing);
+    openLaunchFlow(p, supplier.shortName || supplier.name || '', supplier.billing, supplier.quoteArchive);
 }
 
 // 組出文案生成系統的連結（帶商品資料當 URL 參數，沿用開團系統的參數格式）
