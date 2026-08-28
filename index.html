@@ -877,6 +877,15 @@
                 <div id="edit-billing-wrap"></div>
             </div>
 
+            <!-- 廠商補充檔案歸檔（編輯彈窗，僅廠商顯示）：廠商後續補寄的報價單／文件由後台自行上傳 -->
+            <div id="edit-archive-section" class="hidden mt-6 pt-5 border-t border-gray-200">
+                <h4 class="text-base font-bold text-brand-dark flex items-center gap-2 mb-3">
+                    <span>📎</span>
+                    <span>補充報價單／檔案歸檔</span>
+                </h4>
+                <div id="edit-archive-wrap"></div>
+            </div>
+
             <!-- 廠商商品清單（編輯彈窗，僅廠商顯示） -->
             <div id="edit-products-wrap" class="hidden mt-6 pt-5 border-t border-gray-200">
                 <div class="flex items-center justify-between mb-3 flex-wrap gap-2">
@@ -2099,6 +2108,11 @@ function renderTable(data) {
                 ? '<span class="inline-block px-1.5 py-0.5 rounded text-[10px] bg-orange-100 text-orange-700 align-middle ml-1" title="既有供應商補商品">既有</span>'
                 : (item.submissionType === 'new' ? '<span class="inline-block px-1.5 py-0.5 rounded text-[10px] bg-brand/30 text-brand-dark align-middle ml-1" title="第一次提品">新</span>' : ''))
             : '';
+        // 有歸檔檔案的廠商，名稱旁掛 📎 數量徽章
+        const archiveCount = (isSupplier && Array.isArray(item.quoteArchive)) ? item.quoteArchive.length : 0;
+        const archiveBadge = archiveCount > 0
+            ? `<span class="inline-block px-1.5 py-0.5 rounded text-[10px] bg-blue-100 text-blue-700 align-middle ml-1" title="已歸檔 ${archiveCount} 個補充檔案（點編輯查看）">📎 ${archiveCount}</span>`
+            : '';
         // 展開列：列出此廠商的商品（預設隱藏，點📦徽章展開）
         const detailRow = (isSupplier && productCount > 0)
             ? `<tr id="detail-${item.id}" class="hidden bg-green-50/40">
@@ -2108,7 +2122,7 @@ function renderTable(data) {
         return `<tr class="border-b border-gray-100">
             <td class="p-3"><input type="checkbox" class="custom-checkbox" ${checked} onchange="toggleSelect('${item.id}', this.checked)"></td>
             <td class="p-3 font-mono text-xs">${item.customId ? escHtml(item.customId) : '<span class="text-gray-300">未填</span>'}</td>
-            <td class="p-3 font-medium">${escHtml(item.name || '')}${subTypeBadge}</td>
+            <td class="p-3 font-medium">${escHtml(item.name || '')}${subTypeBadge}${archiveBadge}</td>
             <td class="p-3">${escHtml(item.shortName || '')}</td>
             ${ctCell}
             ${productCell}
@@ -2237,15 +2251,19 @@ function openEditModal(docId) {
     // 廠商報價單 + 請款資料 + 商品清單（可編輯）
     const prodWrap = document.getElementById('edit-products-wrap');
     const billingSection = document.getElementById('edit-billing-section');
+    const archiveSection = document.getElementById('edit-archive-section');
     if (isSupplier) {
         prodWrap.classList.remove('hidden');
         billingSection.classList.remove('hidden');
+        archiveSection.classList.remove('hidden');
         renderSupplierQuoteSection(docId, item);
         renderSupplierBillingSection(item);
+        renderSupplierArchiveSection(docId, item);
         renderEditProducts(item.products || []);
     } else {
         prodWrap.classList.add('hidden');
         billingSection.classList.add('hidden');
+        archiveSection.classList.add('hidden');
     }
 
     document.getElementById('modal-edit').classList.remove('hidden');
@@ -2319,6 +2337,153 @@ async function viewBillingFile(path) {
     } catch (err) {
         console.error(err);
         showToast('檔案讀取失敗，請稍後再試', 'error');
+    }
+}
+
+// ===== 後台：📎 補充報價單／檔案歸檔（廠商後續補寄的檔案，由後台自行上傳）=====
+// 資料存 Firestore 廠商 doc 的 quoteArchive 陣列，檔案存 Storage contact-quotation-archive/{docId}/
+// 與前台第 3 步的 billing.quotationPath 分開，不會互相覆蓋
+
+const ARCHIVE_MAX_MB = 20; // 單檔上限（Storage 預設規則：登入者可讀寫，無大小限制，這裡自己擋）
+
+// 檔案大小顯示
+function fmtFileSize(bytes) {
+    const n = Number(bytes) || 0;
+    if (n < 1024) return n + ' B';
+    if (n < 1024 * 1024) return (n / 1024).toFixed(0) + ' KB';
+    return (n / 1024 / 1024).toFixed(1) + ' MB';
+}
+
+// 依副檔名給個圖示，一眼看出是報價單還是照片
+function archiveIcon(name) {
+    const ext = String(name || '').split('.').pop().toLowerCase();
+    if (['xlsx', 'xls', 'csv'].includes(ext)) return '📊';
+    if (['pdf'].includes(ext)) return '📕';
+    if (['jpg', 'jpeg', 'png', 'gif', 'webp', 'heic'].includes(ext)) return '🖼';
+    if (['doc', 'docx'].includes(ext)) return '📝';
+    return '📄';
+}
+
+// 渲染編輯彈窗的歸檔區（上傳鈕 + 已歸檔清單）
+function renderSupplierArchiveSection(docId, item) {
+    const wrap = document.getElementById('edit-archive-wrap');
+    if (!wrap) return;
+    const files = Array.isArray(item.quoteArchive) ? item.quoteArchive.slice() : [];
+    // 新上傳的排前面
+    files.sort((a, b) => String(b.uploadedAt || '').localeCompare(String(a.uploadedAt || '')));
+
+    const listHtml = files.length === 0
+        ? `<div class="bg-gray-50 border border-gray-200 rounded-lg px-3 py-2.5 text-xs text-gray-400">尚未歸檔任何檔案</div>`
+        : `<div class="bg-gray-50 border border-gray-200 rounded-lg divide-y divide-gray-200">
+            ${files.map(f => {
+                // uploadedAt 存 ISO 字串，顯示時轉台灣當地時間
+                const t = f.uploadedAt ? new Date(f.uploadedAt).toLocaleString('zh-TW') : '';
+                return `<div class="flex items-center justify-between gap-2 px-3 py-2 flex-wrap">
+                    <div class="min-w-0">
+                        <div class="text-sm font-medium text-brand-dark break-all">${archiveIcon(f.name)} ${escHtml(f.name || '未命名檔案')}</div>
+                        <div class="text-[11px] text-gray-400 mt-0.5">${escHtml(fmtFileSize(f.size))}${t ? ' · ' + escHtml(t) : ''}${f.uploadedBy ? ' · ' + escHtml(f.uploadedBy) : ''}</div>
+                    </div>
+                    <div class="flex items-center gap-2 flex-shrink-0">
+                        <button type="button" onclick="viewBillingFile('${escAttr(f.path)}')" class="px-3 py-1 rounded-lg text-xs font-medium text-white" style="background: #16a34a;">🔍 查看</button>
+                        <button type="button" onclick="deleteArchiveFile('${escAttr(docId)}', '${escAttr(f.path)}')" class="px-2 py-1 rounded-lg text-xs font-medium text-red-600 border border-red-300 hover:bg-red-50" title="刪除這個檔案">🗑</button>
+                    </div>
+                </div>`;
+            }).join('')}
+        </div>`;
+
+    wrap.innerHTML = `
+        <div class="flex items-center justify-between gap-2 flex-wrap mb-2">
+            <span class="text-xs text-gray-500">📎 廠商事後補寄的報價單／文件放這裡，可傳多個檔案（單檔上限 ${ARCHIVE_MAX_MB}MB）。<span class="text-gray-400">上傳後立即存檔，不用再按「儲存」。</span></span>
+            <label id="archive-upload-label" class="px-3 py-1.5 rounded-lg text-xs font-bold text-brand-dark cursor-pointer flex-shrink-0" style="background: #C3F000;">
+                <span id="archive-upload-text">⬆️ 上傳檔案</span>
+                <input type="file" multiple class="hidden" onchange="uploadArchiveFiles('${escAttr(docId)}', this)">
+            </label>
+        </div>
+        ${listHtml}`;
+}
+
+// 上傳一個或多個檔案並寫回 Firestore
+async function uploadArchiveFiles(docId, input) {
+    const files = Array.from(input.files || []);
+    input.value = ''; // 先清空，同一個檔案再選一次也能觸發
+    if (files.length === 0) return;
+
+    const tooBig = files.filter(f => f.size > ARCHIVE_MAX_MB * 1024 * 1024);
+    if (tooBig.length > 0) {
+        showToast(`「${tooBig[0].name}」超過 ${ARCHIVE_MAX_MB}MB，請壓縮後再上傳`, 'error');
+        return;
+    }
+
+    const label = document.getElementById('archive-upload-label');
+    const labelText = document.getElementById('archive-upload-text');
+    // 上傳中：只換文字（不動 label 內的 input），並暫時擋住重複點擊
+    const setLabel = (txt, busy) => {
+        if (labelText) labelText.textContent = txt;
+        if (label) label.style.pointerEvents = busy ? 'none' : '';
+        if (label) label.style.opacity = busy ? '0.6' : '';
+    };
+    const item = allData.find(x => x.id === docId);
+    const uploader = (currentUser && currentUser.email) || '';
+    const added = [];
+
+    try {
+        for (let i = 0; i < files.length; i++) {
+            const f = files[i];
+            setLabel(`上傳中 ${i + 1}/${files.length}...`, true);
+            const safeName = f.name.replace(/[\/\\#?%\[\]]/g, '_');
+            // 檔名前綴時間戳，避免同名檔互相覆蓋
+            const path = `contact-quotation-archive/${docId}/${Date.now()}_${safeName}`;
+            await storage.ref(path).put(f);
+            const entry = {
+                path,
+                name: f.name,
+                size: f.size,
+                uploadedAt: new Date().toISOString(),
+                uploadedBy: uploader
+            };
+            await db.collection(COLLECTIONS.supplier).doc(docId).update({
+                quoteArchive: firebase.firestore.FieldValue.arrayUnion(entry)
+            });
+            added.push(entry);
+        }
+        // 同步更新本地資料，畫面立即反映（不用重新載入整份資料）
+        if (item) {
+            item.quoteArchive = (item.quoteArchive || []).concat(added);
+            renderSupplierArchiveSection(docId, item);
+        }
+        filterTable(); // 更新列表上的 📎 數量徽章（保留目前搜尋條件）
+        showToast(`已歸檔 ${added.length} 個檔案`);
+    } catch (err) {
+        console.error(err);
+        showToast('上傳失敗，請稍後再試', 'error');
+        if (item) renderSupplierArchiveSection(docId, item);
+    } finally {
+        setLabel('⬆️ 上傳檔案', false);
+    }
+}
+
+// 刪除一個已歸檔的檔案（Storage + Firestore 一起清）
+async function deleteArchiveFile(docId, path) {
+    if (!confirm('確定要刪除這個檔案嗎？此操作無法復原。')) return;
+    const item = allData.find(x => x.id === docId);
+    try {
+        try {
+            await storage.ref(path).delete();
+        } catch (e) {
+            // 檔案已不存在時照樣把 Firestore 那筆清掉，不要卡住
+            if (e && e.code !== 'storage/object-not-found') throw e;
+        }
+        const rest = (item && item.quoteArchive ? item.quoteArchive : []).filter(f => f.path !== path);
+        await db.collection(COLLECTIONS.supplier).doc(docId).update({ quoteArchive: rest });
+        if (item) {
+            item.quoteArchive = rest;
+            renderSupplierArchiveSection(docId, item);
+        }
+        filterTable();
+        showToast('已刪除');
+    } catch (err) {
+        console.error(err);
+        showToast('刪除失敗，請稍後再試', 'error');
     }
 }
 

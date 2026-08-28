@@ -35,6 +35,7 @@ git push origin main
   - **編輯彈窗的商品資料可就地編輯（全欄位 + 八大營養），可新增／移除商品，按「儲存」一起寫回 Firestore**（2026-07-03）
   - **廠商報價單產生器**（編輯彈窗「📄 產生報價單」，manager+）：依廠商商品自動帶入商品名(規格)/數量/單價（預設商品報價含稅、可改），5% 稅金可切換，算合計/稅金/總計；**canvas 線上簽名（客戶簽章）**；html2canvas+jsPDF 產出對應紙本版型的簽名版 PDF → 下載留存 + 上傳 Storage `contact-signed-quotations/{docId}/` + 廠商 doc 記 `quotationConfirmed`；已確認報價可在編輯彈窗再下載（2026-07-03）
   - **每個商品明細底部有「✍️ 一鍵產生文案」按鈕，帶商品資料開啟文案生成系統**（2026-07-03，沿用開團系統的 URL 參數格式）
+  - **📎 補充報價單／檔案歸檔**（2026-08-28 新增）：編輯彈窗（僅廠商）「請款須知與資料」下方新增歸檔區，廠商事後補寄的報價單／文件由後台自行上傳，可多檔累加不覆蓋（前台第 3 步的 `billing.quotationPath` 只有一份、會被蓋掉，所以另開欄位）。檔案存 Storage `contact-quotation-archive/{docId}/{時間戳}_{檔名}`（時間戳前綴避免同名互蓋），廠商 doc 記 `quoteArchive` 陣列（path／name／size／uploadedAt〔ISO〕／uploadedBy〔上傳者 email〕）；上傳後立即寫回 Firestore，不用再按「儲存」；單檔上限 20MB；每筆可「🔍 查看」（取簽章網址開新分頁）與「🗑 刪除」（Storage＋Firestore 一起清，檔案已不存在也照清）；廠商列表名稱旁掛 📎 N 徽章顯示已歸檔份數。⚠️ 白名單成員登入後 Storage 走預設「需登入可讀寫」規則、Firestore 走 `contact-suppliers` 的 update 權限，**規則不用改**
   - **「🚀 送到上架流程」按鈕**（2026-08-04）：編輯彈窗商品卡底部（讀當下輸入框的值，免先存檔）與列表明細列（用已存資料）各一顆，把該商品整包資料（規格／條碼／效期／最少出貨量／物流／三種價格＋毛利率／成分／文案／目標客群／情境／特色／口感／營養標示／圖片連結）編成 base64url 塞進 `?import=` 開啟 https://derlife-launch-flow.web.app ，那邊自動帶進「新增商品」表單並在建立後存進專案，接力的人直接看得到（超過 7500 字元會擋下提示精簡）
   - 「帳號權限管理」分頁底下可編輯身份卡片 icon／標題／說明（支援 emoji、文字、上傳圖片）
 - 統一編號支援三種模式：有統編（8碼）／無統編／無需統編
@@ -47,7 +48,7 @@ git push origin main
 - **單廠商商品匯出**（編輯彈窗「匯出此廠商商品」／列表「匯出商品」）自 2026-07-03 起改輸出**完整商品資訊**（25 欄，含成分／營養／文案／目標客群等，檔名 `商品資訊_廠商_日期.xlsx`），供複製到官網建立商品；與上面 9 欄 ERP 匯入檔用途不同
 
 ## Firestore Collections
-- `contact-suppliers` — 廠商資料（含 `products` array、`submissionType: new/existing`、`quotationConfirmed`＝簽名版報價單記錄、`billing`＝請款須知與資料〔ackClosing/ackInvoiceInfo/invoiceMethod/passbookPath/quotationPath/quotationName/submittedAt〕）
+- `contact-suppliers` — 廠商資料（含 `products` array、`submissionType: new/existing`、`quotationConfirmed`＝簽名版報價單記錄、`billing`＝請款須知與資料〔ackClosing/ackInvoiceInfo/invoiceMethod/passbookPath/quotationPath/quotationName/submittedAt〕、`quoteArchive`＝後台補上傳的歸檔檔案陣列〔path/name/size/uploadedAt/uploadedBy〕）
 - `contact-customers` — 客戶資料
 - `contact-products` — 給客戶選擇的產品報價清單
 - `contact-whitelist` — 後台帳號白名單（含 role）
@@ -98,6 +99,7 @@ cd "/Users/jacky/Desktop/claude/claude code/規則主檔"
 
 ## 最後部署日期
 
+- 2026-08-28（**📎 補充報價單／檔案歸檔**：廠商事後補寄的報價單／文件，可在後台編輯彈窗自行上傳歸檔。多檔累加不覆蓋前台第 3 步那份〔`billing.quotationPath` 只有一份會被蓋掉〕；Storage `contact-quotation-archive/{docId}/{時間戳}_{檔名}`、Firestore 廠商 doc 新欄位 `quoteArchive[]`；上傳即存不用按儲存、單檔 20MB、可查看／刪除；廠商列表名稱旁 📎 N 徽章。僅廠商分頁有，客戶分頁不顯示。**規則不用改**〔Storage 走預設需登入、Firestore 走 contact-suppliers update 權限〕）
 - 2026-08-05（商品**新增「產地」欄**〔key `origin`，前台提品卡排在商品規格之後、後台編輯卡、完整資訊匯出 Excel 多一欄〔排在商品條碼後〕、送到上架流程一併帶過去〕。標 `*` 但不強制驗證，與該區其他商品欄位一致。ERP 匯入檔 9 欄格式未動。開團系統同步新增〔那邊是真必填〕）
 - 2026-08-04（商品欄位調整：**新增「加熱方式／食用建議」**（key `usage`，選填 textarea，前台提品卡＋後台編輯卡都有，完整資訊匯出 Excel 多一欄，送到上架流程一併帶過去）；**「商品圖片連結」改名「商品與素材連結」**（key 仍為 `imageLink`，舊資料相容；說明文字改為「商品圖片、包裝照、影片、型錄等素材」）。同步改開團系統前台／後台）
 - 2026-08-04（🐛 修價格不能填小數：前台廠商提品的商品報價／末端售價／團購價三個 `type="number"` 欄位沒設 `step`，瀏覽器預設 step=1 → 填 81.9 被驗證擋下只能填整數；三欄補 `step="0.01" min="0"`，後台編輯彈窗的 `epField()` 也改成數字型欄位一律帶 `step="0.01" min="0"`。收集與儲存本來就是 `Number()` 不會截斷，舊資料不受影響〔已被廠商填成整數的要自己在後台改回小數〕。⚠️ **開團系統前台／後台的價格欄有同樣問題，尚未處理**）
