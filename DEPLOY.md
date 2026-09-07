@@ -99,6 +99,7 @@ cd "/Users/jacky/Desktop/claude/claude code/規則主檔"
 
 ## 最後部署日期
 
+- 2026-09-07（商品**新增「素別」「保存方式」「過敏原」三欄**〔key `vegType`／`storage`／`allergens`〕：前台提品卡排在「產地」之後〔素別＝下拉：全素／蛋素／奶素／奶蛋素／植物五辛素；保存方式＝下拉：常溫／冷藏／冷凍；過敏原＝整行文字，無則填「無」〕、後台編輯卡同步〔`epField()` 新增 `options` 下拉模式，舊資料若是選項外的值會自動補一個選項保留〕、完整資訊匯出 Excel 多三欄〔排在產地後〕、送到上架流程一併帶過去〔上架流程「廠商提報資料」表多顯示產地／素別／保存方式／過敏原，且推零售成本表的溫層改為優先吃「保存方式」，沒填才從物流猜〕。與產地一樣標 `*` 但不強制驗證。ERP 匯入檔 9 欄未動；Firestore 規則不驗商品內欄位，**規則不用改**。⚠️ 開團系統這次**未同步**）
 - 2026-08-28（**「📤 送到專案」：歸檔檔案可掛到上架流程「已經在跑」的專案**。`?import=` 只在建立專案那一刻帶資料，而廠商補寄多半發生在專案跑起來之後 → 歸檔清單每筆多一顆橘色「📤 送到專案」，跳出上架流程的專案清單〔進行中在上、已上架在下、已封存不列，已掛過的變灰不能重複掛〕，選一檔就把 `{path,name,size,addedAt,addedBy,from:'contact-system',supplier}` arrayUnion 進對方 doc 的 `attachments[]`。**檔案不重傳**（同一個 Firebase project，只掛 Storage 路徑），對方頁面走 onSnapshot 即時出現。⚠️ 跨系統寫入，操作者必須同時在 `launch-flow-whitelist`，不在會被規則擋 → 已做 permission-denied 專門提示〔請小關到該系統帳號管理加入〕。規則不用改）
 - 2026-08-28（**歸檔檔案一併送進商品上架流程**：「🚀 送到上架流程／🚀 上架」的 payload 新增 `quoteFiles: [{p:路徑, n:檔名}]`，把該廠商 `quoteArchive` 最新 5 份帶過去〔超過 5 份 toast 會講明帶了幾份、還剩幾份沒帶〕；上架流程那邊「📦 廠商提報資料」多一列「補充報價單／檔案」可直接開啟。⚠️ 帶過去的是**當下快照**，專案建立後才補的檔案不會自動同步）
 - 2026-08-28（**📎 補充報價單／檔案歸檔**：廠商事後補寄的報價單／文件，可在後台編輯彈窗自行上傳歸檔。多檔累加不覆蓋前台第 3 步那份〔`billing.quotationPath` 只有一份會被蓋掉〕；Storage `contact-quotation-archive/{docId}/{時間戳}_{檔名}`、Firestore 廠商 doc 新欄位 `quoteArchive[]`；上傳即存不用按儲存、單檔 20MB、可查看／刪除；廠商列表名稱旁 📎 N 徽章。僅廠商分頁有，客戶分頁不顯示。**規則不用改**〔Storage 走預設需登入、Firestore 走 contact-suppliers update 權限〕）
@@ -128,3 +129,18 @@ cd "/Users/jacky/Desktop/claude/claude code/規則主檔"
 - 2026-05-14 — 「我要賣貨」拆成「第一次提品」「既有供應商」兩條路徑、兩步驟 wizard；廠商提品支援商品資訊（17 欄含八大營養）；後台新增「商品數」欄、「商品匯入檔」匯出（9 欄 ERP）
 - 2026-04-23 — 新增得來素／緣味歸檔格式匯出，匯出按鈕改為三格式版面
 - 2026-04-17 — 統一編號改為非必填，新增「無統編／無需統編」選項
+
+
+---
+
+## 📋 系統細節（2026-09-03 從 CLAUDE.md 移入）
+
+> 這段原本寫在全域 `~/.claude/CLAUDE.md` 的系統清單裡。為了讓 CLAUDE.md 回到
+> 「規則與索引」的角色，細節移到這裡。CLAUDE.md 只留一行索引。
+
+- **類型**：HTML
+- **部署**：Firebase Hosting（遷移中）
+
+### 完整說明
+
+廠商與客戶資料管理，統編支援有/無/無需三種模式。**2026-07-30 廠商 wizard 加第 3 步「請款須知與資料」**：月結基準日勾選＋發票方式擇一＋存摺照片/報價單上傳（Storage `contact-billing-uploads/`，匿名僅 create、後台登入讀）＋發票開立資訊勾選；新廠商全必填、既有供應商精簡版（報價單必傳、存摺選填）；廠商 doc 記 `billing` 欄位（Firestore 規則 validContactCreate 白名單含 billing）。**2026-06-23 新增 Telegram 新資料通知**：Cloud Functions（Gen2, codebase `contact`, asia-east1）`contactSupplierAlert`/`contactCustomerAlert` 監聽 `contact-suppliers`/`contact-customers`，廠商／客戶填完送出即推「得來素業務戰情」群組；**共用業務戰情告警系統的 bot（@derlife_sales_alert_bot）與密鑰 `TELEGRAM_BOT_TOKEN`/`TELEGRAM_CHAT_ID`**（任一邊改 token 另一邊要同步）
