@@ -38,6 +38,16 @@ git push origin main
   - **📎 補充報價單／檔案歸檔**（2026-08-28 新增）：編輯彈窗（僅廠商）「請款須知與資料」下方新增歸檔區，廠商事後補寄的報價單／文件由後台自行上傳，可多檔累加不覆蓋（前台第 3 步的 `billing.quotationPath` 只有一份、會被蓋掉，所以另開欄位）。檔案存 Storage `contact-quotation-archive/{docId}/{時間戳}_{檔名}`（時間戳前綴避免同名互蓋），廠商 doc 記 `quoteArchive` 陣列（path／name／size／uploadedAt〔ISO〕／uploadedBy〔上傳者 email〕）；上傳後立即寫回 Firestore，不用再按「儲存」；單檔上限 20MB；每筆可「🔍 查看」（取簽章網址開新分頁）與「🗑 刪除」（Storage＋Firestore 一起清，檔案已不存在也照清）；廠商列表名稱旁掛 📎 N 徽章顯示已歸檔份數。⚠️ 白名單成員登入後 Storage 走預設「需登入可讀寫」規則、Firestore 走 `contact-suppliers` 的 update 權限，**規則不用改**
   - **「🚀 送到上架流程」按鈕**（2026-08-04）：編輯彈窗商品卡底部（讀當下輸入框的值，免先存檔）與列表明細列（用已存資料）各一顆，把該商品整包資料（規格／條碼／效期／最少出貨量／物流／三種價格＋毛利率／成分／文案／目標客群／情境／特色／口感／營養標示／圖片連結）編成 base64url 塞進 `?import=` 開啟 https://derlife-launch-flow.web.app ，那邊自動帶進「新增商品」表單並在建立後存進專案，接力的人直接看得到（超過 7500 字元會擋下提示精簡）
   - 「帳號權限管理」分頁底下可編輯身份卡片 icon／標題／說明（支援 emoji、文字、上傳圖片）
+- **📇 開發名單（潛在客戶名單）分頁**（2026-09-14 新增，小關指示做進業務系統讓業務打電話）：
+  - 通用型名單，有「分類」（預設 宗教單位／素食餐廳／學校機關／公司福委／其他，manager+ 可在 ⚙️ 分類 增減，存 `contact-settings/leads`）
+  - 每筆：單位名稱、分類、教別、類型、縣市、地址、電話（列表 📞 與彈窗「撥打」都是 `tel:` 連結，手機直接撥）、Email、聯絡人、來源、**狀態**（未聯絡→已聯絡→有興趣→已報價→已成交／無意願／電話無效，列表可直接改）、**已聯絡過**勾選、下次跟進日、備註、**聯絡紀錄**（時間／方式／內容／下次跟進／同時改狀態，`arrayUnion` 追加）
+  - **官網訂購紀錄獨立一欄＋彈窗獨立區塊**：官網買過的單位帶 訂單數／累計金額／最近與首購日／買過品項／訂單電話與地址，狀態預設「已成交」，業務定期關心用；快捷 chip「🛒 官網買過」一鍵篩出
+  - 快捷 chip：今天要跟進（下次跟進日 ≤ 今天且未結案，列表紅底）／官網買過／已成交／全部已載入；篩選 縣市／分類／教別／類型／狀態＋關鍵字（名稱／電話／地址／聯絡人／備註）
+  - ⚠️ **一萬多筆不一次載入**：進分頁只讀「官網買過」＋「今天要跟進」兩個查詢，選縣市才讀該縣市（`where city ==`），「載入全部名單」要按才讀（會 confirm）。列表每頁 100 筆分頁。**改查詢別把它變成全撈**（Firestore 讀取配額曾爆過）
+  - 📥 匯入 CSV／Excel（SheetJS；認 單位名稱／寺廟名稱、教別、類型、主祀神祇、縣市／行政區、地址、電話、Email、聯絡人／負責人、統一編號、編號、備註）：有「編號」用 `moi-<編號>` 當 doc id，否則 `k-<hash(名稱|縣市)>`；先用 `documentId in` 每 30 筆查重複，**已存在的略過不覆蓋**（不洗掉紀錄）；每 400 筆一個 batch
+  - 📤 匯出目前篩選結果 xlsx；🔁 轉成正式客戶：在 `contact-customers` 建一筆（欄位照前台 `validContactCreate` 白名單，note 註明由開發名單轉入），名單標「已成交」＋`convertedCustomerId`
+  - 刪除限 manager 以上（規則同步限制）；其餘白名單成員都能看、記錄、改狀態
+  - **首批資料 2026-09-14 由腳本匯入**（`名單來源/import_leads.js` 的邏輯，走 firebase-tools token REST batchWrite）：內政部「全國宗教資訊系統資料-寺廟」12,424 筆（doc id `moi-<編號>`，來源「內政部名冊」）＋官網歷史訂單辨識出的宗教單位 89 個（25 個自動對到名冊併同一筆、64 個另建 `web-<hash>`，來源「官網訂單」）；名冊原始檔在 `名單來源/`（已 .gitignore）
 - 統一編號支援三種模式：有統編（8碼）／無統編／無需統編
 - 匯出支援四種格式：
   - **ERP 匯入檔**（14 欄，供應商／客戶各自格式）
@@ -52,7 +62,8 @@ git push origin main
 - `contact-customers` — 客戶資料
 - `contact-products` — 給客戶選擇的產品報價清單
 - `contact-whitelist` — 後台帳號白名單（含 role）
-- `contact-settings` — 全域設定（如 `supplier-entry` 身份卡片設定）
+- `contact-settings` — 全域設定（如 `supplier-entry` 身份卡片設定、`leads`＝開發名單分類清單）
+- `contact-leads` — 開發名單（潛在客戶，2026-09-14）：`name/category/religion/kind/deity/city/address/phone/email/contact/source/status/contacted/nextFollowUp(YYYY-MM-DD)/lastContactAt/logs[]{at,by,method,content,next,status}/hasWebOrders/web{orders,total,lastOrderAt,firstOrderAt,items,phone,address,contact}/moiId/regType/taxId/lat/lng/notes/convertedCustomerId/createdAt/updatedAt/updatedBy`；doc id：`moi-<內政部編號>`／`web-<hash>`／`k-<hash>`／自動
 
 ## Firestore 規則
 規則統一管理在 `/Users/jacky/Desktop/claude/claude code/規則主檔/derlife-audit/`，部署：
@@ -98,7 +109,7 @@ cd "/Users/jacky/Desktop/claude/claude code/規則主檔"
   ```
 
 ## 最後部署日期
-
+2026-09-14（新增「開發名單」分頁；規則主檔加 contact-leads；首批 12,488 筆名單匯入）
 - 2026-09-07（商品**新增「素別」「保存方式」「過敏原」三欄**〔key `vegType`／`storage`／`allergens`〕：前台提品卡排在「產地」之後〔素別＝下拉：全素／蛋素／奶素／奶蛋素／植物五辛素；保存方式＝下拉：常溫／冷藏／冷凍；過敏原＝整行文字，無則填「無」〕、後台編輯卡同步〔`epField()` 新增 `options` 下拉模式，舊資料若是選項外的值會自動補一個選項保留〕、完整資訊匯出 Excel 多三欄〔排在產地後〕、送到上架流程一併帶過去〔上架流程「廠商提報資料」表多顯示產地／素別／保存方式／過敏原，且推零售成本表的溫層改為優先吃「保存方式」，沒填才從物流猜〕。與產地一樣標 `*` 但不強制驗證。ERP 匯入檔 9 欄未動；Firestore 規則不驗商品內欄位，**規則不用改**。⚠️ 開團系統這次**未同步**）
 - 2026-08-28（**「📤 送到專案」：歸檔檔案可掛到上架流程「已經在跑」的專案**。`?import=` 只在建立專案那一刻帶資料，而廠商補寄多半發生在專案跑起來之後 → 歸檔清單每筆多一顆橘色「📤 送到專案」，跳出上架流程的專案清單〔進行中在上、已上架在下、已封存不列，已掛過的變灰不能重複掛〕，選一檔就把 `{path,name,size,addedAt,addedBy,from:'contact-system',supplier}` arrayUnion 進對方 doc 的 `attachments[]`。**檔案不重傳**（同一個 Firebase project，只掛 Storage 路徑），對方頁面走 onSnapshot 即時出現。⚠️ 跨系統寫入，操作者必須同時在 `launch-flow-whitelist`，不在會被規則擋 → 已做 permission-denied 專門提示〔請小關到該系統帳號管理加入〕。規則不用改）
 - 2026-08-28（**歸檔檔案一併送進商品上架流程**：「🚀 送到上架流程／🚀 上架」的 payload 新增 `quoteFiles: [{p:路徑, n:檔名}]`，把該廠商 `quoteArchive` 最新 5 份帶過去〔超過 5 份 toast 會講明帶了幾份、還剩幾份沒帶〕；上架流程那邊「📦 廠商提報資料」多一列「補充報價單／檔案」可直接開啟。⚠️ 帶過去的是**當下快照**，專案建立後才補的檔案不會自動同步）
