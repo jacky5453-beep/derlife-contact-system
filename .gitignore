@@ -12,3 +12,4 @@ functions/.env
 # 匯入用的 Excel 樣板／暫存檔（本機用，不需進版控）
 *.xls
 *.xlsx
+名單來源/

@@ -490,6 +490,66 @@
                 class="px-5 py-2 rounded-lg font-medium text-sm transition admin-tab bg-gray-200 text-gray-600 hover:bg-gray-300">
                 帳號權限管理
             </button>
+            <button onclick="switchAdminTab('leads')" id="tab-leads"
+                class="px-5 py-2 rounded-lg font-medium text-sm transition admin-tab bg-gray-200 text-gray-600 hover:bg-gray-300">
+                開發名單
+            </button>
+        </div>
+
+        <!-- ===== 開發名單（潛在客戶名單，2026-09-14 新增）===== -->
+        <div id="admin-leads" class="bg-white rounded-2xl shadow-md p-4 sm:p-6 hidden">
+            <div class="flex flex-col lg:flex-row gap-3 mb-3 lg:items-center lg:justify-between">
+                <div class="flex flex-wrap gap-2 items-center">
+                    <button type="button" onclick="setLeadQuick('today')" id="lead-quick-today" class="lead-chip px-3 py-1.5 rounded-full text-sm border border-gray-200 bg-gray-50 hover:bg-gray-100">📅 今天要跟進 <span id="lead-cnt-today" class="font-bold">0</span></button>
+                    <button type="button" onclick="setLeadQuick('web')" id="lead-quick-web" class="lead-chip px-3 py-1.5 rounded-full text-sm border border-gray-200 bg-gray-50 hover:bg-gray-100">🛒 官網買過 <span id="lead-cnt-web" class="font-bold">0</span></button>
+                    <button type="button" onclick="setLeadQuick('won')" id="lead-quick-won" class="lead-chip px-3 py-1.5 rounded-full text-sm border border-gray-200 bg-gray-50 hover:bg-gray-100">✅ 已成交 <span id="lead-cnt-won" class="font-bold">0</span></button>
+                    <button type="button" onclick="setLeadQuick('')" id="lead-quick-all" class="lead-chip px-3 py-1.5 rounded-full text-sm border border-gray-200 bg-gray-50 hover:bg-gray-100">全部已載入 <span id="lead-cnt-all" class="font-bold">0</span></button>
+                </div>
+                <div class="flex flex-wrap gap-2">
+                    <button type="button" onclick="openLeadModal(null)" class="px-4 py-2 rounded-lg text-sm font-bold text-brand-dark" style="background:#C3F000;">➕ 新增</button>
+                    <button type="button" onclick="openLeadImportModal()" class="px-4 py-2 rounded-lg text-sm font-medium border border-gray-300 text-gray-600 hover:bg-gray-50">📥 匯入</button>
+                    <button type="button" onclick="exportLeads()" class="px-4 py-2 rounded-lg text-sm font-medium border border-gray-300 text-gray-600 hover:bg-gray-50">📤 匯出</button>
+                    <button type="button" onclick="openLeadCategoryModal()" id="lead-btn-categories" class="px-4 py-2 rounded-lg text-sm font-medium border border-gray-300 text-gray-600 hover:bg-gray-50">⚙️ 分類</button>
+                </div>
+            </div>
+            <!-- 篩選列 -->
+            <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2 mb-3">
+                <select id="lead-f-city" onchange="onLeadCityChange()" class="border border-gray-300 rounded-lg px-2 py-2 text-sm bg-white"></select>
+                <select id="lead-f-category" onchange="applyLeadFilters()" class="border border-gray-300 rounded-lg px-2 py-2 text-sm bg-white"></select>
+                <select id="lead-f-religion" onchange="applyLeadFilters()" class="border border-gray-300 rounded-lg px-2 py-2 text-sm bg-white"></select>
+                <select id="lead-f-kind" onchange="applyLeadFilters()" class="border border-gray-300 rounded-lg px-2 py-2 text-sm bg-white"></select>
+                <select id="lead-f-status" onchange="applyLeadFilters()" class="border border-gray-300 rounded-lg px-2 py-2 text-sm bg-white"></select>
+                <input type="search" id="lead-f-q" placeholder="搜尋名稱／電話／地址／聯絡人" oninput="applyLeadFilters()" class="border border-gray-300 rounded-lg px-3 py-2 text-sm col-span-2 md:col-span-1">
+            </div>
+            <div class="flex flex-wrap items-center justify-between gap-2 mb-2 text-xs text-gray-500">
+                <div id="lead-scope-info">尚未載入</div>
+                <div class="flex gap-3 items-center">
+                    <button type="button" onclick="loadLeadScope('all')" class="text-blue-500 hover:underline">載入全部名單</button>
+                    <span id="lead-count" class="font-medium text-gray-700">符合 0 筆</span>
+                </div>
+            </div>
+            <div class="overflow-x-auto -mx-4 sm:mx-0">
+                <table class="data-table w-full text-sm min-w-[1100px]">
+                    <thead>
+                        <tr class="bg-brand-dark text-white text-left">
+                            <th class="p-2 rounded-tl-lg w-10"></th>
+                            <th class="p-2">單位</th>
+                            <th class="p-2">分類／教別</th>
+                            <th class="p-2">縣市／地址</th>
+                            <th class="p-2">電話</th>
+                            <th class="p-2">狀態</th>
+                            <th class="p-2 text-center">聯絡過</th>
+                            <th class="p-2">下次跟進</th>
+                            <th class="p-2">🛒 官網訂購</th>
+                            <th class="p-2">最近紀錄</th>
+                            <th class="p-2 rounded-tr-lg">操作</th>
+                        </tr>
+                    </thead>
+                    <tbody id="lead-tbody"></tbody>
+                </table>
+            </div>
+            <div id="lead-empty" class="hidden text-center text-gray-400 py-10 text-sm">沒有符合的名單。先選縣市或按「載入全部名單」。</div>
+            <div id="lead-pager" class="flex justify-center items-center gap-3 mt-3 text-sm"></div>
         </div>
 
         <!-- 廠商/客戶 資料區 -->
@@ -1129,6 +1189,182 @@
             <button type="button" onclick="openCompanyInfoModal()" class="px-4 py-2 rounded-lg text-sm font-medium text-gray-600 border border-gray-300 hover:bg-gray-50" title="這份報價單中得來素是買方（客戶方），此按鈕編輯印在「客戶資料」欄的得來素聯絡資訊">⚙️ 我方資訊（得來素）</button>
             <button type="button" onclick="closeSupplierQuoteModal()" class="px-4 py-2 rounded-lg text-sm font-medium border border-gray-300 text-gray-600 hover:bg-gray-50">取消</button>
             <button type="button" onclick="generateSupplierQuotePDF()" id="sq-btn-generate" class="px-6 py-2 rounded-lg text-sm font-bold text-brand-dark" style="background: #C3F000;">📄 產生並下載 PDF</button>
+        </div>
+    </div>
+</div>
+
+<!-- ===== 開發名單：詳情／聯絡紀錄 彈窗 ===== -->
+<div id="modal-lead" class="fixed inset-0 z-50 hidden">
+    <div class="absolute inset-0 bg-black/40" onclick="closeLeadModal()"></div>
+    <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-white rounded-2xl shadow-2xl w-[96vw] max-w-3xl max-h-[92vh] overflow-y-auto p-5 sm:p-6">
+        <div class="flex items-center justify-between mb-3">
+            <h3 id="lead-modal-title" class="text-xl font-bold text-brand-dark">開發名單</h3>
+            <button onclick="closeLeadModal()" class="text-gray-400 hover:text-gray-600" aria-label="關閉">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+            </button>
+        </div>
+        <!-- 官網訂購紀錄（獨立區塊，有才顯示）-->
+        <div id="lead-web-box" class="hidden mb-4 rounded-xl border border-brand/60 bg-brand/10 p-3 text-sm">
+            <div class="font-bold text-brand-dark mb-1">🛒 官網訂購紀錄（既有客戶，請定期關心）</div>
+            <div id="lead-web-content" class="text-gray-700"></div>
+        </div>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div class="sm:col-span-2">
+                <label class="block text-xs font-medium text-gray-600 mb-1">單位名稱 *</label>
+                <input id="lead-name" type="text" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
+            </div>
+            <div>
+                <label class="block text-xs font-medium text-gray-600 mb-1">分類</label>
+                <select id="lead-category" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white"></select>
+            </div>
+            <div>
+                <label class="block text-xs font-medium text-gray-600 mb-1">教別（宗教單位才需要）</label>
+                <select id="lead-religion" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white"></select>
+            </div>
+            <div>
+                <label class="block text-xs font-medium text-gray-600 mb-1">類型</label>
+                <input id="lead-kind" type="text" list="lead-kind-list" placeholder="寺／宮／精舍／餐廳…" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
+                <datalist id="lead-kind-list"><option>寺</option><option>宮</option><option>廟</option><option>精舍禪院</option><option>佛堂講堂</option><option>祠壇殿堂</option><option>餐廳</option><option>學校</option><option>公司</option></datalist>
+            </div>
+            <div>
+                <label class="block text-xs font-medium text-gray-600 mb-1">縣市</label>
+                <select id="lead-city" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white"></select>
+            </div>
+            <div class="sm:col-span-2">
+                <label class="block text-xs font-medium text-gray-600 mb-1">地址</label>
+                <input id="lead-address" type="text" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
+            </div>
+            <div>
+                <label class="block text-xs font-medium text-gray-600 mb-1">電話</label>
+                <div class="flex gap-2">
+                    <input id="lead-phone" type="tel" class="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm">
+                    <a id="lead-phone-call" href="#" class="px-3 py-2 rounded-lg text-sm font-bold text-white bg-green-600 hover:bg-green-700 whitespace-nowrap">📞 撥打</a>
+                </div>
+            </div>
+            <div>
+                <label class="block text-xs font-medium text-gray-600 mb-1">Email</label>
+                <input id="lead-email" type="email" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
+            </div>
+            <div>
+                <label class="block text-xs font-medium text-gray-600 mb-1">聯絡人／負責人</label>
+                <input id="lead-contact" type="text" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
+            </div>
+            <div>
+                <label class="block text-xs font-medium text-gray-600 mb-1">來源</label>
+                <input id="lead-source" type="text" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm bg-gray-50" placeholder="手動新增">
+            </div>
+            <div>
+                <label class="block text-xs font-medium text-gray-600 mb-1">狀態</label>
+                <select id="lead-status" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white"></select>
+            </div>
+            <div>
+                <label class="block text-xs font-medium text-gray-600 mb-1">下次跟進日</label>
+                <input id="lead-next" type="date" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
+            </div>
+            <div class="sm:col-span-2 flex items-center gap-3">
+                <label class="inline-flex items-center gap-2 text-sm"><input id="lead-contacted" type="checkbox" class="custom-checkbox"> 已聯絡過</label>
+                <span id="lead-extra" class="text-xs text-gray-400"></span>
+            </div>
+            <div class="sm:col-span-2">
+                <label class="block text-xs font-medium text-gray-600 mb-1">備註</label>
+                <textarea id="lead-notes" rows="2" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"></textarea>
+            </div>
+        </div>
+
+        <!-- 聯絡紀錄 -->
+        <div class="mt-5 border-t pt-4">
+            <div class="font-bold text-brand-dark mb-2">📒 聯絡紀錄</div>
+            <div id="lead-logs" class="space-y-2 mb-3 max-h-56 overflow-y-auto"></div>
+            <div id="lead-log-form" class="rounded-xl bg-gray-50 p-3">
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-2 mb-2">
+                    <select id="lead-log-method" class="border border-gray-300 rounded-lg px-2 py-2 text-sm bg-white"></select>
+                    <input id="lead-log-next" type="date" class="border border-gray-300 rounded-lg px-2 py-2 text-sm" title="下次跟進日">
+                    <select id="lead-log-status" class="border border-gray-300 rounded-lg px-2 py-2 text-sm bg-white col-span-2" title="同時更新狀態"></select>
+                </div>
+                <textarea id="lead-log-content" rows="2" placeholder="這次聯絡的內容（誰接的、反應如何、需求量、下次要做什麼）" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm mb-2"></textarea>
+                <div class="flex justify-end">
+                    <button type="button" onclick="addLeadLog()" class="px-4 py-2 rounded-lg text-sm font-bold text-brand-dark" style="background:#C3F000;">＋ 加一筆紀錄</button>
+                </div>
+                <p class="text-[11px] text-gray-400 mt-1">加紀錄會直接存檔並勾「已聯絡過」；新名單請先按「儲存」再加紀錄。</p>
+            </div>
+        </div>
+
+        <div class="mt-5 flex flex-wrap justify-between gap-2">
+            <div class="flex gap-2">
+                <button type="button" id="lead-btn-delete" onclick="deleteLead(leadCurrentId)" class="px-4 py-2 rounded-lg text-sm font-medium text-red-500 border border-red-200 hover:bg-red-50">刪除</button>
+                <button type="button" id="lead-btn-convert" onclick="openLeadConvertModal()" class="px-4 py-2 rounded-lg text-sm font-medium text-green-700 border border-green-300 hover:bg-green-50">🔁 轉成正式客戶</button>
+            </div>
+            <div class="flex gap-2">
+                <button type="button" onclick="closeLeadModal()" class="px-4 py-2 rounded-lg text-sm font-medium border border-gray-300 text-gray-600 hover:bg-gray-50">關閉</button>
+                <button type="button" onclick="saveLead()" class="px-6 py-2 rounded-lg text-sm font-bold text-brand-dark" style="background:#C3F000;">💾 儲存</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ===== 開發名單：匯入 ===== -->
+<div id="modal-lead-import" class="fixed inset-0 z-[60] hidden">
+    <div class="absolute inset-0 bg-black/40" onclick="closeLeadImportModal()"></div>
+    <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-white rounded-2xl shadow-2xl w-[94vw] max-w-lg p-6">
+        <h3 class="text-lg font-bold text-brand-dark mb-3">📥 匯入名單（CSV／Excel）</h3>
+        <p class="text-xs text-gray-500 mb-3">第一列要是欄位名稱。認得的欄位：單位名稱（或 寺廟名稱／名稱）、教別、類型、主祀神祇、縣市（或 行政區）、地址、電話、Email、聯絡人（或 負責人）、統一編號、編號、備註。有「編號」的用編號去重，沒有的用名稱＋縣市去重；已存在的會略過、不會洗掉紀錄。</p>
+        <div class="space-y-3">
+            <div>
+                <label class="block text-xs font-medium text-gray-600 mb-1">檔案</label>
+                <input id="lead-import-file" type="file" accept=".csv,.xlsx,.xls" class="w-full text-sm">
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+                <div>
+                    <label class="block text-xs font-medium text-gray-600 mb-1">歸到分類</label>
+                    <select id="lead-import-category" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white"></select>
+                </div>
+                <div>
+                    <label class="block text-xs font-medium text-gray-600 mb-1">來源標記</label>
+                    <input id="lead-import-source" type="text" value="匯入" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
+                </div>
+            </div>
+            <div id="lead-import-progress" class="text-sm text-gray-600 hidden"></div>
+        </div>
+        <div class="mt-5 flex justify-end gap-2">
+            <button type="button" onclick="closeLeadImportModal()" class="px-4 py-2 rounded-lg text-sm font-medium border border-gray-300 text-gray-600 hover:bg-gray-50">取消</button>
+            <button type="button" id="lead-import-btn" onclick="runLeadImport()" class="px-6 py-2 rounded-lg text-sm font-bold text-brand-dark" style="background:#C3F000;">開始匯入</button>
+        </div>
+    </div>
+</div>
+
+<!-- ===== 開發名單：分類設定 ===== -->
+<div id="modal-lead-categories" class="fixed inset-0 z-[60] hidden">
+    <div class="absolute inset-0 bg-black/40" onclick="closeLeadCategoryModal()"></div>
+    <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-white rounded-2xl shadow-2xl w-[94vw] max-w-md p-6">
+        <h3 class="text-lg font-bold text-brand-dark mb-2">⚙️ 名單分類</h3>
+        <p class="text-xs text-gray-500 mb-3">一行一個分類。改了名稱不會回頭改既有名單的分類，只影響之後新增與篩選。</p>
+        <textarea id="lead-categories-text" rows="7" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"></textarea>
+        <div class="mt-4 flex justify-end gap-2">
+            <button type="button" onclick="closeLeadCategoryModal()" class="px-4 py-2 rounded-lg text-sm font-medium border border-gray-300 text-gray-600 hover:bg-gray-50">取消</button>
+            <button type="button" onclick="saveLeadCategories()" class="px-6 py-2 rounded-lg text-sm font-bold text-brand-dark" style="background:#C3F000;">儲存</button>
+        </div>
+    </div>
+</div>
+
+<!-- ===== 開發名單：轉成正式客戶 ===== -->
+<div id="modal-lead-convert" class="fixed inset-0 z-[60] hidden">
+    <div class="absolute inset-0 bg-black/40" onclick="closeLeadConvertModal()"></div>
+    <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-white rounded-2xl shadow-2xl w-[94vw] max-w-md p-6">
+        <h3 class="text-lg font-bold text-brand-dark mb-2">🔁 轉成正式客戶</h3>
+        <p class="text-xs text-gray-500 mb-3">會在「客戶資料」建一筆，帶入名稱、地址、電話、聯絡人、Email；這筆名單狀態改為「已成交」並標記已轉客戶。</p>
+        <div class="space-y-3">
+            <div>
+                <label class="block text-xs font-medium text-gray-600 mb-1">客戶簡稱</label>
+                <input id="lead-convert-short" type="text" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
+            </div>
+            <div>
+                <label class="block text-xs font-medium text-gray-600 mb-1">客戶類型</label>
+                <select id="lead-convert-type" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white"></select>
+            </div>
+        </div>
+        <div class="mt-4 flex justify-end gap-2">
+            <button type="button" onclick="closeLeadConvertModal()" class="px-4 py-2 rounded-lg text-sm font-medium border border-gray-300 text-gray-600 hover:bg-gray-50">取消</button>
+            <button type="button" onclick="convertLeadToCustomer()" class="px-6 py-2 rounded-lg text-sm font-bold text-brand-dark" style="background:#C3F000;">建立客戶</button>
         </div>
     </div>
 </div>
@@ -2049,11 +2285,17 @@ function switchAdminTab(tab) {
     const dataEl = document.getElementById('admin-data');
     const productEl = document.getElementById('admin-product');
     const whitelistEl = document.getElementById('admin-whitelist');
+    const leadsEl = document.getElementById('admin-leads');
     dataEl.classList.add('hidden');
     productEl.classList.add('hidden');
     whitelistEl.classList.add('hidden');
+    leadsEl.classList.add('hidden');
 
-    if (tab === 'whitelist') {
+    if (tab === 'leads') {
+        // 開發名單（潛在客戶）2026-09-14
+        leadsEl.classList.remove('hidden');
+        loadLeadsTab();
+    } else if (tab === 'whitelist') {
         whitelistEl.classList.remove('hidden');
         loadWhitelist();
         loadEntryCardSettings(true); // 把設定填回後台表單
@@ -4941,6 +5183,457 @@ async function saveSignedQuoteToCloud(pdf, fileName, model) {
         console.error('存檔雲端失敗', e);
         showToast('已下載 PDF，但雲端存檔失敗（可稍後重試）', 'error');
     }
+}
+</script>
+
+<script>
+// =====================================================================
+// 開發名單（潛在客戶名單）2026-09-14 新增
+// 用途：業務主動開發（寺廟／餐廳／機關…）的聯絡名單＋聯絡紀錄。
+// 資料存 Firestore `contact-leads`；分類清單存 `contact-settings/leads`。
+// 一萬多筆不一次載入：預設只載「官網買過」＋「今天要跟進」，選縣市才載該縣市。
+// =====================================================================
+const LEADS_COL = 'contact-leads';
+const LEAD_STATUSES = ['未聯絡', '已聯絡', '有興趣', '已報價', '已成交', '無意願', '電話無效'];
+const LEAD_CLOSED = ['已成交', '無意願', '電話無效'];
+const LEAD_STATUS_CLS = {
+    '未聯絡': 'bg-gray-100 text-gray-600', '已聯絡': 'bg-blue-100 text-blue-700', '有興趣': 'bg-yellow-100 text-yellow-800',
+    '已報價': 'bg-orange-100 text-orange-700', '已成交': 'bg-green-100 text-green-700', '無意願': 'bg-gray-200 text-gray-400', '電話無效': 'bg-red-100 text-red-600'
+};
+const LEAD_DEFAULT_CATEGORIES = ['宗教單位', '素食餐廳', '學校機關', '公司福委', '其他'];
+const LEAD_RELIGIONS = ['佛教', '道教', '一貫道', '其他'];
+const LEAD_KINDS = ['寺', '宮', '廟', '精舍禪院', '佛堂講堂', '祠壇殿堂', '法師個人', '餐廳', '學校', '公司', '其他'];
+const LEAD_CITIES = ['臺北市', '新北市', '桃園市', '臺中市', '臺南市', '高雄市', '基隆市', '新竹市', '新竹縣', '苗栗縣', '彰化縣', '南投縣', '雲林縣', '嘉義市', '嘉義縣', '屏東縣', '宜蘭縣', '花蓮縣', '臺東縣', '澎湖縣', '金門縣', '連江縣'];
+const LEAD_METHODS = ['電話', 'LINE', 'Email', '拜訪', 'DM', '其他'];
+const LEAD_PAGE_SIZE = 100;
+
+let leadCategories = [...LEAD_DEFAULT_CATEGORIES];
+let leadCategoriesLoaded = false;
+let leadSelectsFilled = false;
+let leadCache = new Map();      // id → 名單資料（已從 Firestore 載入的部分）
+let leadScopes = new Set();     // 已載入的範圍：'web' / 'today' / 'all' / 'city:臺中市'
+let leadQuick = '';             // 快捷篩選：'' / 'today' / 'web' / 'won'
+let leadFiltered = [];
+let leadPage = 1;
+let leadCurrentId = null;       // 彈窗正在編輯的名單 id（null＝新增）
+
+// ── 小工具 ──
+function leadToday() { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; }
+function leadNowISO() { return new Date().toISOString(); }
+function leadFmt(iso) { if (!iso) return ''; const d = new Date(iso); if (isNaN(d)) return String(iso).slice(0, 10); return `${d.getFullYear()}/${d.getMonth() + 1}/${d.getDate()} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`; }
+function leadVal(id) { const el = document.getElementById(id); return el ? String(el.value || '').trim() : ''; }
+function leadSetVal(id, v) { const el = document.getElementById(id); if (el) el.value = v == null ? '' : v; }
+function leadNormCity(s) { s = String(s || '').trim().replace(/台/g, '臺'); const m = s.match(/^(臺北市|新北市|桃園市|臺中市|臺南市|高雄市|基隆市|新竹市|新竹縣|苗栗縣|彰化縣|南投縣|雲林縣|嘉義市|嘉義縣|屏東縣|宜蘭縣|花蓮縣|臺東縣|澎湖縣|金門縣|連江縣)/); return m ? m[1] : s; }
+function leadHash(s) { let h = 5381; for (let i = 0; i < s.length; i++) h = ((h << 5) + h + s.charCodeAt(i)) >>> 0; return h.toString(16); }
+function leadLastLog(l) { const logs = Array.isArray(l.logs) ? l.logs : []; if (!logs.length) return ''; const g = logs[logs.length - 1]; return `${leadFmt(g.at).slice(0, 10)} ${g.method || ''}：${g.content || ''}`; }
+
+// ── 進入分頁 ──
+async function loadLeadsTab() {
+    if (!leadCategoriesLoaded) await loadLeadCategories();
+    fillLeadSelects();
+    document.getElementById('lead-btn-categories').classList.toggle('hidden', !isManagerOrAbove());
+    if (!leadScopes.has('web')) await loadLeadScope('web');
+    if (!leadScopes.has('today')) await loadLeadScope('today');
+    applyLeadFilters();
+}
+async function loadLeadCategories() {
+    try {
+        const snap = await db.collection('contact-settings').doc('leads').get();
+        if (snap.exists && Array.isArray(snap.data().categories) && snap.data().categories.length) leadCategories = snap.data().categories;
+    } catch (e) { console.warn('分類設定讀取失敗', e); }
+    leadCategoriesLoaded = true;
+}
+function fillLeadSelects(force) {
+    const opts = (arr, first) => (first != null ? `<option value="">${first}</option>` : '') + arr.map(v => `<option value="${escAttr(v)}">${escHtml(v)}</option>`).join('');
+    const keep = (id, html) => { const el = document.getElementById(id); const v = el.value; el.innerHTML = html; if ([...el.options].some(o => o.value === v)) el.value = v; };
+    if (!leadSelectsFilled) {
+        keep('lead-f-city', opts(LEAD_CITIES, '全部縣市'));
+        keep('lead-f-religion', opts(LEAD_RELIGIONS, '全部教別'));
+        keep('lead-f-kind', opts(LEAD_KINDS, '全部類型'));
+        keep('lead-f-status', opts(LEAD_STATUSES, '全部狀態'));
+        keep('lead-religion', opts(LEAD_RELIGIONS, '—'));
+        keep('lead-city', opts(LEAD_CITIES, '—'));
+        keep('lead-status', opts(LEAD_STATUSES, null));
+        keep('lead-log-method', opts(LEAD_METHODS, null));
+        keep('lead-log-status', opts(LEAD_STATUSES, '（狀態不變）'));
+        keep('lead-convert-type', opts(VALID_CUSTOMER_TYPES, null));
+    }
+    if (!leadSelectsFilled || force) {
+        keep('lead-f-category', opts(leadCategories, '全部分類'));
+        keep('lead-category', opts(leadCategories, null));
+        keep('lead-import-category', opts(leadCategories, null));
+    }
+    leadSelectsFilled = true;
+}
+
+// ── 載入資料（分範圍）──
+function leadScopeLabel() {
+    const cities = [...leadScopes].filter(s => s.startsWith('city:')).map(s => s.slice(5));
+    const parts = [];
+    if (leadScopes.has('all')) parts.push('全部');
+    else { if (leadScopes.has('web')) parts.push('官網買過'); if (leadScopes.has('today')) parts.push('今天要跟進'); if (cities.length) parts.push(cities.join('、')); }
+    return `已載入 ${leadCache.size} 筆（範圍：${parts.join('＋') || '無'}）`;
+}
+async function loadLeadScope(scope) {
+    let q;
+    if (scope === 'web') q = db.collection(LEADS_COL).where('hasWebOrders', '==', true);
+    else if (scope === 'today') q = db.collection(LEADS_COL).where('nextFollowUp', '>=', '2000-01-01').where('nextFollowUp', '<=', leadToday());
+    else if (scope === 'all') { if (leadScopes.has('all')) return; if (!confirm('要載入全部名單嗎？一萬多筆會花幾秒鐘。')) return; q = db.collection(LEADS_COL); }
+    else if (scope.startsWith('city:')) q = db.collection(LEADS_COL).where('city', '==', scope.slice(5));
+    else return;
+    const info = document.getElementById('lead-scope-info');
+    info.textContent = '載入中…';
+    try {
+        const snap = await q.get();
+        snap.forEach(d => leadCache.set(d.id, { id: d.id, ...d.data() }));
+        leadScopes.add(scope);
+        if (scope === 'all') LEAD_CITIES.forEach(c => leadScopes.add('city:' + c));
+    } catch (e) {
+        console.error(e);
+        showToast('載入名單失敗：' + (e.message || e), 'error');
+    }
+    info.textContent = leadScopeLabel();
+    if (scope === 'all') applyLeadFilters();
+}
+async function onLeadCityChange() {
+    const city = leadVal('lead-f-city');
+    if (city && !leadScopes.has('city:' + city) && !leadScopes.has('all')) await loadLeadScope('city:' + city);
+    applyLeadFilters();
+}
+function setLeadQuick(q) {
+    leadQuick = q;
+    document.querySelectorAll('.lead-chip').forEach(b => { b.style.background = ''; b.style.color = ''; b.style.borderColor = ''; });
+    const active = document.getElementById('lead-quick-' + (q || 'all'));
+    if (active) { active.style.background = '#C3F000'; active.style.color = '#1A1A16'; active.style.borderColor = '#C3F000'; }
+    applyLeadFilters();
+}
+
+// ── 篩選與渲染 ──
+function applyLeadFilters() {
+    const f = { city: leadVal('lead-f-city'), category: leadVal('lead-f-category'), religion: leadVal('lead-f-religion'), kind: leadVal('lead-f-kind'), status: leadVal('lead-f-status'), q: leadVal('lead-f-q').toLowerCase() };
+    const today = leadToday();
+    let arr = [...leadCache.values()];
+    if (leadQuick === 'today') arr = arr.filter(l => l.nextFollowUp && l.nextFollowUp <= today && !LEAD_CLOSED.includes(l.status));
+    else if (leadQuick === 'web') arr = arr.filter(l => l.hasWebOrders);
+    else if (leadQuick === 'won') arr = arr.filter(l => l.status === '已成交');
+    if (f.city) arr = arr.filter(l => l.city === f.city);
+    if (f.category) arr = arr.filter(l => l.category === f.category);
+    if (f.religion) arr = arr.filter(l => l.religion === f.religion);
+    if (f.kind) arr = arr.filter(l => l.kind === f.kind);
+    if (f.status) arr = arr.filter(l => l.status === f.status);
+    if (f.q) arr = arr.filter(l => [l.name, l.phone, l.address, l.contact, l.notes, l.deity].some(v => String(v || '').toLowerCase().includes(f.q)));
+    // 排序：有跟進日的在前（最早的優先）→ 其餘依名稱
+    arr.sort((a, b) => { const ad = a.nextFollowUp || '9999-99-99', bd = b.nextFollowUp || '9999-99-99'; if (ad !== bd) return ad < bd ? -1 : 1; return String(a.name || '').localeCompare(String(b.name || ''), 'zh-Hant'); });
+    leadFiltered = arr;
+    leadPage = 1;
+    renderLeads();
+    updateLeadCounts();
+}
+function updateLeadCounts() {
+    const today = leadToday();
+    const all = [...leadCache.values()];
+    document.getElementById('lead-cnt-today').textContent = all.filter(l => l.nextFollowUp && l.nextFollowUp <= today && !LEAD_CLOSED.includes(l.status)).length;
+    document.getElementById('lead-cnt-web').textContent = all.filter(l => l.hasWebOrders).length;
+    document.getElementById('lead-cnt-won').textContent = all.filter(l => l.status === '已成交').length;
+    document.getElementById('lead-cnt-all').textContent = all.length;
+    document.getElementById('lead-scope-info').textContent = leadScopeLabel();
+}
+function leadWebCell(l) {
+    if (!l.hasWebOrders || !l.web) return '<span class="text-gray-300">—</span>';
+    const w = l.web;
+    return `<span class="inline-block px-2 py-0.5 rounded text-xs bg-brand/30 text-brand-dark font-medium" title="${escAttr((w.items || '').slice(0, 200))}">${w.orders || 0} 單 $${Number(w.total || 0).toLocaleString()}</span><div class="text-[11px] text-gray-400">最近 ${escHtml(String(w.lastOrderAt || '').slice(0, 10))}</div>`;
+}
+function renderLeads() {
+    const tbody = document.getElementById('lead-tbody');
+    const empty = document.getElementById('lead-empty');
+    const countEl = document.getElementById('lead-count');
+    const total = leadFiltered.length;
+    countEl.textContent = `符合 ${total} 筆`;
+    if (!total) { tbody.innerHTML = ''; empty.classList.remove('hidden'); document.getElementById('lead-pager').innerHTML = ''; return; }
+    empty.classList.add('hidden');
+    const pages = Math.ceil(total / LEAD_PAGE_SIZE);
+    if (leadPage > pages) leadPage = pages;
+    const rows = leadFiltered.slice((leadPage - 1) * LEAD_PAGE_SIZE, leadPage * LEAD_PAGE_SIZE);
+    const today = leadToday();
+    const canDelete = isManagerOrAbove();
+    tbody.innerHTML = rows.map(l => {
+        const overdue = l.nextFollowUp && l.nextFollowUp <= today && !LEAD_CLOSED.includes(l.status);
+        const tel = String(l.phone || '').replace(/[^0-9+#*]/g, '');
+        const lastLog = leadLastLog(l);
+        const cls = LEAD_STATUS_CLS[l.status] || LEAD_STATUS_CLS['未聯絡'];
+        return `<tr class="border-b border-gray-100 ${overdue ? 'bg-red-50/40' : ''}">
+            <td class="p-2 text-center">${tel ? `<a href="tel:${escAttr(tel)}" class="text-lg" title="撥打 ${escAttr(l.phone)}">📞</a>` : ''}</td>
+            <td class="p-2">
+                <button type="button" onclick="openLeadModal('${l.id}')" class="font-medium text-left hover:underline text-brand-dark">${escHtml(l.name || '')}</button>
+                ${l.convertedCustomerId ? '<span class="inline-block px-1.5 py-0.5 rounded text-[10px] bg-green-100 text-green-700 align-middle ml-1">已轉客戶</span>' : ''}
+                <div class="text-[11px] text-gray-400">${escHtml(l.source || '')}${l.kind ? '・' + escHtml(l.kind) : ''}${l.contact ? '・' + escHtml(l.contact) : ''}</div>
+            </td>
+            <td class="p-2 text-xs">${escHtml(l.category || '')}${l.religion ? `<div class="text-gray-500">${escHtml(l.religion)}</div>` : ''}</td>
+            <td class="p-2 text-xs">${escHtml(l.city || '')}<div class="text-gray-400 truncate max-w-[200px]" title="${escAttr(l.address || '')}">${escHtml(l.address || '')}</div></td>
+            <td class="p-2 text-xs font-mono whitespace-nowrap">${escHtml(l.phone || '')}</td>
+            <td class="p-2"><select onchange="quickLeadStatus('${l.id}', this.value)" class="text-xs rounded-md px-1.5 py-1 border-0 ${cls}">${LEAD_STATUSES.map(s => `<option value="${s}" ${s === (l.status || '未聯絡') ? 'selected' : ''}>${s}</option>`).join('')}</select></td>
+            <td class="p-2 text-center"><input type="checkbox" class="custom-checkbox" ${l.contacted ? 'checked' : ''} onchange="toggleLeadContacted('${l.id}', this.checked)" title="已聯絡過"></td>
+            <td class="p-2 text-xs whitespace-nowrap ${overdue ? 'text-red-600 font-bold' : ''}">${escHtml(l.nextFollowUp || '')}</td>
+            <td class="p-2 text-xs">${leadWebCell(l)}</td>
+            <td class="p-2 text-xs text-gray-500"><div class="truncate max-w-[220px]" title="${escAttr(lastLog)}">${escHtml(lastLog)}</div></td>
+            <td class="p-2 whitespace-nowrap">
+                <button type="button" onclick="openLeadModal('${l.id}')" class="text-blue-500 hover:text-blue-700 text-sm font-medium">詳情</button>
+                ${canDelete ? `<button type="button" onclick="deleteLead('${l.id}')" class="text-red-400 hover:text-red-600 text-sm ml-2">刪除</button>` : ''}
+            </td>
+        </tr>`;
+    }).join('');
+    const pager = document.getElementById('lead-pager');
+    pager.innerHTML = pages > 1 ? `
+        <button type="button" onclick="leadGoPage(${leadPage - 1})" ${leadPage <= 1 ? 'disabled' : ''} class="px-3 py-1 rounded border border-gray-300 disabled:opacity-40">‹ 上一頁</button>
+        <span class="text-gray-600">第 ${leadPage} / ${pages} 頁</span>
+        <button type="button" onclick="leadGoPage(${leadPage + 1})" ${leadPage >= pages ? 'disabled' : ''} class="px-3 py-1 rounded border border-gray-300 disabled:opacity-40">下一頁 ›</button>` : '';
+}
+function leadGoPage(p) { leadPage = p; renderLeads(); window.scrollTo({ top: 0, behavior: 'smooth' }); }
+
+// ── 列表上的快速操作 ──
+async function quickLeadStatus(id, status) {
+    const l = leadCache.get(id); if (!l) return;
+    const patch = { status, updatedAt: leadNowISO(), updatedBy: currentUser.email };
+    if (status !== '未聯絡') patch.contacted = true;
+    try { await db.collection(LEADS_COL).doc(id).update(patch); Object.assign(l, patch); applyLeadFilters(); showToast(`狀態已改為「${status}」`); }
+    catch (e) { console.error(e); showToast('更新失敗：' + (e.message || e), 'error'); }
+}
+async function toggleLeadContacted(id, checked) {
+    const l = leadCache.get(id); if (!l) return;
+    const patch = { contacted: !!checked, updatedAt: leadNowISO(), updatedBy: currentUser.email };
+    if (checked) { patch.lastContactAt = leadNowISO(); if (!l.status || l.status === '未聯絡') patch.status = '已聯絡'; }
+    try { await db.collection(LEADS_COL).doc(id).update(patch); Object.assign(l, patch); applyLeadFilters(); }
+    catch (e) { console.error(e); showToast('更新失敗：' + (e.message || e), 'error'); }
+}
+
+// ── 詳情彈窗 ──
+function openLeadModal(id) {
+    leadCurrentId = id;
+    const l = id ? (leadCache.get(id) || {}) : {};
+    document.getElementById('lead-modal-title').textContent = id ? '名單詳情' : '新增名單';
+    leadSetVal('lead-name', l.name); leadSetVal('lead-category', l.category || leadCategories[0]); leadSetVal('lead-religion', l.religion || '');
+    leadSetVal('lead-kind', l.kind); leadSetVal('lead-city', l.city || ''); leadSetVal('lead-address', l.address); leadSetVal('lead-phone', l.phone);
+    leadSetVal('lead-email', l.email); leadSetVal('lead-contact', l.contact); leadSetVal('lead-source', l.source || (id ? '' : '手動新增'));
+    leadSetVal('lead-status', l.status || '未聯絡'); leadSetVal('lead-next', l.nextFollowUp || ''); leadSetVal('lead-notes', l.notes);
+    document.getElementById('lead-contacted').checked = !!l.contacted;
+    const extra = [];
+    if (l.deity) extra.push('主祀：' + l.deity); if (l.regType) extra.push(l.regType); if (l.taxId) extra.push('統編 ' + l.taxId); if (l.lastContactAt) extra.push('最近聯絡 ' + leadFmt(l.lastContactAt)); if (l.updatedBy) extra.push('更新者 ' + l.updatedBy);
+    document.getElementById('lead-extra').textContent = extra.join('｜');
+    leadUpdateCallLink();
+    document.getElementById('lead-phone').oninput = leadUpdateCallLink;
+    // 官網訂購紀錄（獨立區塊）
+    const box = document.getElementById('lead-web-box');
+    if (l.hasWebOrders && l.web) {
+        const w = l.web;
+        document.getElementById('lead-web-content').innerHTML = `
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-1">
+                <div><span class="text-gray-500">訂單</span> <b>${w.orders || 0}</b> 筆</div>
+                <div><span class="text-gray-500">累計</span> <b>$${Number(w.total || 0).toLocaleString()}</b></div>
+                <div><span class="text-gray-500">最近</span> <b>${escHtml(String(w.lastOrderAt || '').slice(0, 10))}</b></div>
+                <div><span class="text-gray-500">首購</span> ${escHtml(String(w.firstOrderAt || '').slice(0, 10))}</div>
+            </div>
+            <div class="text-xs"><span class="text-gray-500">買過：</span>${escHtml(w.items || '')}</div>
+            ${w.phone ? `<div class="text-xs"><span class="text-gray-500">訂單電話：</span>${escHtml(w.phone)}</div>` : ''}
+            ${w.address ? `<div class="text-xs"><span class="text-gray-500">收件地址：</span>${escHtml(w.address)}</div>` : ''}`;
+        box.classList.remove('hidden');
+    } else box.classList.add('hidden');
+    renderLeadLogs(l);
+    document.getElementById('lead-log-form').classList.toggle('hidden', !id);
+    document.getElementById('lead-btn-delete').classList.toggle('hidden', !id || !isManagerOrAbove());
+    document.getElementById('lead-btn-convert').classList.toggle('hidden', !id || !!l.convertedCustomerId);
+    leadSetVal('lead-log-content', ''); leadSetVal('lead-log-next', ''); leadSetVal('lead-log-status', '');
+    document.getElementById('modal-lead').classList.remove('hidden');
+}
+function leadUpdateCallLink() {
+    const tel = leadVal('lead-phone').replace(/[^0-9+#*]/g, '');
+    const a = document.getElementById('lead-phone-call');
+    a.href = tel ? 'tel:' + tel : '#';
+    a.classList.toggle('opacity-40', !tel);
+    a.classList.toggle('pointer-events-none', !tel);
+}
+function closeLeadModal() { document.getElementById('modal-lead').classList.add('hidden'); leadCurrentId = null; }
+function renderLeadLogs(l) {
+    const logs = Array.isArray(l.logs) ? [...l.logs].reverse() : [];
+    const el = document.getElementById('lead-logs');
+    if (!logs.length) { el.innerHTML = '<p class="text-xs text-gray-400">還沒有聯絡紀錄</p>'; return; }
+    el.innerHTML = logs.map(g => `<div class="rounded-lg border border-gray-200 px-3 py-2 text-sm">
+        <div class="flex flex-wrap justify-between gap-1 text-xs text-gray-500"><span>${escHtml(leadFmt(g.at))}｜${escHtml(g.method || '')}｜${escHtml(g.by || '')}</span>${g.next ? `<span class="text-orange-600">下次 ${escHtml(g.next)}</span>` : ''}${g.status ? `<span class="text-blue-600">→ ${escHtml(g.status)}</span>` : ''}</div>
+        <div class="whitespace-pre-wrap">${escHtml(g.content || '')}</div>
+    </div>`).join('');
+}
+function leadCollectForm() {
+    return {
+        name: leadVal('lead-name'), category: leadVal('lead-category'), religion: leadVal('lead-religion'), kind: leadVal('lead-kind'),
+        city: leadNormCity(leadVal('lead-city')), address: leadVal('lead-address'), phone: leadVal('lead-phone'), email: leadVal('lead-email'),
+        contact: leadVal('lead-contact'), source: leadVal('lead-source') || '手動新增', status: leadVal('lead-status') || '未聯絡',
+        nextFollowUp: leadVal('lead-next'), contacted: document.getElementById('lead-contacted').checked, notes: leadVal('lead-notes')
+    };
+}
+async function saveLead() {
+    const data = leadCollectForm();
+    if (!data.name) return showToast('單位名稱必填', 'error');
+    if (data.status !== '未聯絡') data.contacted = true;
+    data.updatedAt = leadNowISO(); data.updatedBy = currentUser.email;
+    try {
+        if (leadCurrentId) {
+            await db.collection(LEADS_COL).doc(leadCurrentId).update(data);
+            Object.assign(leadCache.get(leadCurrentId) || {}, data);
+            showToast('已儲存');
+        } else {
+            const doc = { ...data, logs: [], hasWebOrders: false, web: null, createdAt: leadNowISO(), createdBy: currentUser.email };
+            const ref = await db.collection(LEADS_COL).add(doc);
+            leadCache.set(ref.id, { id: ref.id, ...doc });
+            leadCurrentId = ref.id;
+            showToast('已新增，可以開始加聯絡紀錄');
+            openLeadModal(ref.id);
+        }
+        applyLeadFilters();
+    } catch (e) { console.error(e); showToast('儲存失敗：' + (e.message || e), 'error'); }
+}
+async function addLeadLog() {
+    if (!leadCurrentId) return showToast('請先儲存這筆名單', 'error');
+    const content = leadVal('lead-log-content');
+    if (!content) return showToast('請填聯絡內容', 'error');
+    const l = leadCache.get(leadCurrentId) || {};
+    const log = { at: leadNowISO(), by: currentUser.email, method: leadVal('lead-log-method'), content, next: leadVal('lead-log-next'), status: leadVal('lead-log-status') };
+    const patch = { logs: firebase.firestore.FieldValue.arrayUnion(log), contacted: true, lastContactAt: log.at, updatedAt: log.at, updatedBy: currentUser.email };
+    if (log.next) patch.nextFollowUp = log.next;
+    if (log.status) patch.status = log.status; else if (!l.status || l.status === '未聯絡') patch.status = '已聯絡';
+    try {
+        await db.collection(LEADS_COL).doc(leadCurrentId).update(patch);
+        l.logs = [...(l.logs || []), log]; l.contacted = true; l.lastContactAt = log.at; l.updatedAt = log.at;
+        if (log.next) l.nextFollowUp = log.next; if (patch.status) l.status = patch.status;
+        leadCache.set(leadCurrentId, l);
+        openLeadModal(leadCurrentId);
+        applyLeadFilters();
+        showToast('紀錄已加');
+    } catch (e) { console.error(e); showToast('加紀錄失敗：' + (e.message || e), 'error'); }
+}
+async function deleteLead(id) {
+    if (!id || !isManagerOrAbove()) return;
+    const l = leadCache.get(id) || {};
+    if (!confirm(`確定刪除「${l.name || id}」？聯絡紀錄會一起消失，無法復原。`)) return;
+    try { await db.collection(LEADS_COL).doc(id).delete(); leadCache.delete(id); closeLeadModal(); applyLeadFilters(); showToast('已刪除'); }
+    catch (e) { console.error(e); showToast('刪除失敗：' + (e.message || e), 'error'); }
+}
+
+// ── 轉成正式客戶（寫進 contact-customers，欄位照前台表單的白名單）──
+function openLeadConvertModal() {
+    const l = leadCache.get(leadCurrentId); if (!l) return;
+    leadSetVal('lead-convert-short', (l.name || '').slice(0, 20));
+    document.getElementById('modal-lead-convert').classList.remove('hidden');
+}
+function closeLeadConvertModal() { document.getElementById('modal-lead-convert').classList.add('hidden'); }
+async function convertLeadToCustomer() {
+    const l = leadCache.get(leadCurrentId); if (!l) return;
+    const customer = {
+        type: 'customer', customId: '', customerType: leadVal('lead-convert-type'), selectedProducts: [],
+        name: String(l.name || '').slice(0, 100), shortName: leadVal('lead-convert-short') || String(l.name || '').slice(0, 20),
+        taxId: l.taxId || '', zipCode: '', invoiceAddr: l.address || '', companyAddr: l.address || '', deliveryAddr: l.address || '',
+        phone: l.phone || '', mobile: '', fax: '', contact: l.contact || '', email: l.email || '',
+        note: `由開發名單轉入（${l.category || ''}／${l.source || ''}）${l.notes ? '｜' + l.notes : ''}`.slice(0, 2000),
+        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+    };
+    try {
+        const ref = await db.collection(COLLECTIONS.customer).add(customer);
+        const patch = { status: '已成交', contacted: true, convertedCustomerId: ref.id, convertedAt: leadNowISO(), updatedAt: leadNowISO(), updatedBy: currentUser.email };
+        await db.collection(LEADS_COL).doc(leadCurrentId).update(patch);
+        Object.assign(l, patch);
+        closeLeadConvertModal(); openLeadModal(leadCurrentId); applyLeadFilters();
+        showToast('已建立正式客戶，可到「客戶資料」分頁查看');
+    } catch (e) { console.error(e); showToast('轉客戶失敗：' + (e.message || e), 'error'); }
+}
+
+// ── 分類設定（contact-settings/leads）──
+function openLeadCategoryModal() {
+    if (!isManagerOrAbove()) return showToast('只有主管以上可以改分類', 'error');
+    leadSetVal('lead-categories-text', leadCategories.join('\n'));
+    document.getElementById('modal-lead-categories').classList.remove('hidden');
+}
+function closeLeadCategoryModal() { document.getElementById('modal-lead-categories').classList.add('hidden'); }
+async function saveLeadCategories() {
+    const list = [...new Set(leadVal('lead-categories-text').split('\n').map(s => s.trim()).filter(Boolean))];
+    if (!list.length) return showToast('至少要有一個分類', 'error');
+    try {
+        await db.collection('contact-settings').doc('leads').set({ categories: list, updatedAt: leadNowISO(), updatedBy: currentUser.email }, { merge: true });
+        leadCategories = list; fillLeadSelects(true); closeLeadCategoryModal(); applyLeadFilters(); showToast('分類已更新');
+    } catch (e) { console.error(e); showToast('儲存失敗：' + (e.message || e), 'error'); }
+}
+
+// ── 匯入（CSV／Excel）──
+function openLeadImportModal() {
+    document.getElementById('lead-import-file').value = '';
+    document.getElementById('lead-import-progress').classList.add('hidden');
+    document.getElementById('lead-import-btn').disabled = false;
+    document.getElementById('modal-lead-import').classList.remove('hidden');
+}
+function closeLeadImportModal() { document.getElementById('modal-lead-import').classList.add('hidden'); }
+async function runLeadImport() {
+    const file = document.getElementById('lead-import-file').files[0];
+    if (!file) return showToast('請先選檔案', 'error');
+    const category = leadVal('lead-import-category');
+    const source = leadVal('lead-import-source') || '匯入';
+    const prog = document.getElementById('lead-import-progress');
+    const btn = document.getElementById('lead-import-btn');
+    const say = t => { prog.textContent = t; prog.classList.remove('hidden'); };
+    try {
+        btn.disabled = true; say('讀取檔案中…');
+        const buf = await file.arrayBuffer();
+        const wb = XLSX.read(buf, { type: 'array' });
+        const rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { defval: '' });
+        const pick = (r, keys) => { for (const k of keys) { if (r[k] !== undefined && String(r[k]).trim() !== '') return String(r[k]).trim(); } return ''; };
+        const mapped = rows.map(r => ({
+            moiId: pick(r, ['編號', 'moiId']), name: pick(r, ['單位名稱', '寺廟名稱', '名稱', 'name']), religion: pick(r, ['教別', 'religion']),
+            kind: pick(r, ['類型', 'kind']), deity: pick(r, ['主祀神祇', '主祀']), city: leadNormCity(pick(r, ['縣市', '行政區', 'city'])),
+            address: pick(r, ['地址', 'address']), phone: pick(r, ['電話', 'phone']), email: pick(r, ['Email', 'email', 'E-Mail', '信箱']),
+            contact: pick(r, ['聯絡人', '負責人', 'contact']), regType: pick(r, ['登記別']), taxId: pick(r, ['統一編號', '統編']),
+            notes: pick(r, ['備註', 'notes'])
+        })).filter(x => x.name);
+        if (!mapped.length) { btn.disabled = false; return showToast('沒有讀到任何有名稱的資料（第一列要是欄位名稱）', 'error'); }
+        if (!confirm(`將匯入 ${mapped.length} 筆到「${category}」（來源：${source}）。已存在的會略過不覆蓋。確定？`)) { btn.disabled = false; return; }
+        // 先算每筆的 doc id（有內政部編號用編號，否則名稱＋縣市），再查哪些已存在
+        mapped.forEach(m => { m.id = m.moiId ? 'moi-' + m.moiId.replace(/[^0-9A-Za-z_-]/g, '') : 'k-' + leadHash(m.name + '|' + m.city); });
+        const ids = [...new Set(mapped.map(m => m.id))];
+        const exists = new Set();
+        for (let i = 0; i < ids.length; i += 30) {
+            const snap = await db.collection(LEADS_COL).where(firebase.firestore.FieldPath.documentId(), 'in', ids.slice(i, i + 30)).get();
+            snap.forEach(d => exists.add(d.id));
+            say(`檢查重複中… ${Math.min(i + 30, ids.length)}/${ids.length}`);
+        }
+        const fresh = mapped.filter(m => !exists.has(m.id));
+        const seen = new Set(); const todo = fresh.filter(m => { if (seen.has(m.id)) return false; seen.add(m.id); return true; });
+        let done = 0;
+        for (let i = 0; i < todo.length; i += 400) {
+            const batch = db.batch();
+            todo.slice(i, i + 400).forEach(m => {
+                const { id, ...rest } = m;
+                batch.set(db.collection(LEADS_COL).doc(id), { ...rest, category, source, status: '未聯絡', contacted: false, nextFollowUp: '', lastContactAt: '', logs: [], hasWebOrders: false, web: null, createdAt: leadNowISO(), createdBy: currentUser.email, updatedAt: leadNowISO(), updatedBy: currentUser.email });
+            });
+            await batch.commit();
+            done += Math.min(400, todo.length - i);
+            say(`寫入中… ${done}/${todo.length}`);
+        }
+        say(`完成：新增 ${todo.length} 筆，略過已存在 ${mapped.length - todo.length} 筆`);
+        showToast(`匯入完成：新增 ${todo.length} 筆`);
+        leadScopes.clear(); leadCache.clear();   // 讓下次載入重新抓
+        await loadLeadsTab();
+    } catch (e) { console.error(e); say('匯入失敗：' + (e.message || e)); showToast('匯入失敗', 'error'); }
+    btn.disabled = false;
+}
+
+// ── 匯出（目前篩選結果）──
+function exportLeads() {
+    if (!leadFiltered.length) return showToast('沒有可匯出的資料', 'error');
+    const rows = leadFiltered.map(l => ({
+        '單位名稱': l.name || '', '分類': l.category || '', '教別': l.religion || '', '類型': l.kind || '', '主祀': l.deity || '', '縣市': l.city || '', '地址': l.address || '',
+        '電話': l.phone || '', 'Email': l.email || '', '聯絡人': l.contact || '', '來源': l.source || '', '狀態': l.status || '', '已聯絡': l.contacted ? '是' : '',
+        '下次跟進': l.nextFollowUp || '', '最近聯絡': l.lastContactAt ? leadFmt(l.lastContactAt) : '', '官網訂單數': l.web ? (l.web.orders || 0) : '', '官網累計': l.web ? (l.web.total || 0) : '', '官網最近': l.web ? String(l.web.lastOrderAt || '').slice(0, 10) : '', '官網買過': l.web ? (l.web.items || '') : '',
+        '最近紀錄': leadLastLog(l), '備註': l.notes || '', '統一編號': l.taxId || ''
+    }));
+    const ws = XLSX.utils.json_to_sheet(rows);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, '開發名單');
+    XLSX.writeFile(wb, `開發名單_${leadToday()}.xlsx`);
 }
 </script>
 
