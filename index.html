@@ -642,6 +642,9 @@
                     <button onclick="addBlankProductRows(10)" class="px-3 py-2 rounded-lg text-sm font-medium text-brand-dark border border-gray-300 hover:bg-gray-50">
                         + 一次加 10 列
                     </button>
+                    <button onclick="openLaunchImportModal()" class="px-3 py-2 rounded-lg text-sm font-medium text-brand-dark" style="background: #FFAA00;" title="從商品上架流程系統挑已上架的新品，帶進報價表">
+                        📦 從已上架商品帶入
+                    </button>
                     <select id="import-customer-type" class="border border-gray-300 rounded-lg px-2 py-2 text-sm focus:ring-2 focus:ring-brand focus:border-brand outline-none" title="若匯入「報價單」格式，需先選此檔的客戶類型">
                         <option value="">[報價單匯入] 客戶類型</option>
                         <option value="團購">團購</option>
@@ -1116,6 +1119,37 @@
         <p class="text-sm text-gray-500 mb-1">把 <span id="send-project-filename" class="font-medium text-brand-dark"></span> 掛到商品上架流程系統的專案，接力的人在那邊就看得到。</p>
         <p class="text-xs text-gray-400 mb-4">檔案不會重傳（只掛連結，秒完成），正本仍留在這筆廠商資料。</p>
         <div id="send-project-list"></div>
+    </div>
+</div>
+
+<!-- 從「商品上架流程系統」已上架商品帶入報價表 -->
+<div id="modal-launch-import" class="fixed inset-0 z-[60] hidden">
+    <div class="absolute inset-0 bg-black/40" onclick="closeLaunchImportModal()"></div>
+    <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-white rounded-2xl shadow-2xl w-[calc(100%-1.5rem)] max-w-2xl max-h-[92vh] flex flex-col p-4 sm:p-6">
+        <div class="flex items-center justify-between mb-2">
+            <h3 class="text-xl font-bold text-brand-dark">📦 從已上架商品帶入</h3>
+            <button onclick="closeLaunchImportModal()" class="text-gray-400 hover:text-gray-600">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+            </button>
+        </div>
+        <p class="text-xs text-gray-500 mb-3">勾商品＋勾客戶類型 → 帶入後報價表會長出新列（還沒存檔）。只帶品名、規格、保存方式、建議末端售價；<b>報價請自己填</b>，填完按「儲存全部變更」才會寫入。</p>
+        <div class="mb-3">
+            <div class="text-xs text-gray-500 mb-1">要建哪些客戶類型的報價（可複選）</div>
+            <div id="launch-import-types" class="flex flex-wrap gap-2"></div>
+        </div>
+        <div class="flex items-center gap-2 mb-2">
+            <input type="search" id="launch-import-search" placeholder="搜尋商品名稱、規格..." oninput="renderLaunchImportList()"
+                class="flex-1 min-w-0 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-brand focus:border-brand outline-none">
+            <span id="launch-import-count" class="text-xs text-gray-400 whitespace-nowrap"></span>
+        </div>
+        <div id="launch-import-list" class="flex-1 overflow-y-auto min-h-[120px] border border-gray-200 rounded-lg p-2"></div>
+        <div class="flex items-center justify-between gap-2 mt-3">
+            <span id="launch-import-summary" class="text-xs text-gray-500"></span>
+            <div class="flex gap-2 flex-shrink-0">
+                <button onclick="closeLaunchImportModal()" class="px-4 py-2 rounded-lg text-sm font-medium border border-gray-300 text-gray-600 hover:bg-gray-50">取消</button>
+                <button onclick="applyLaunchImport()" class="px-4 py-2 rounded-lg text-sm font-bold text-brand-dark" style="background: #C3F000;">帶入報價表</button>
+            </div>
+        </div>
     </div>
 </div>
 
@@ -4137,7 +4171,7 @@ function normalizeProducts() {
 }
 
 function productPayload(p) {
-    return {
+    const o = {
         customerType: p.customerType || '',
         code: p.code || '',
         name: p.name || '',
@@ -4148,6 +4182,9 @@ function productPayload(p) {
         storage: p.storage || '',
         note: p.note || ''
     };
+    // 從上架流程帶入的才有：記來源商品，用來判斷「這檔已建過哪幾種客戶類型的報價」
+    if (p.launchProductId) o.launchProductId = p.launchProductId;
+    return o;
 }
 
 function genTempId() { return '__new_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7); }
@@ -4197,7 +4234,7 @@ function productRowHtml(p) {
         <td class="p-1"><input type="text" value="${escAttr(p.name || '')}" class="w-full border border-gray-200 rounded px-2 py-1 text-sm" onchange="updateProductField('${id}', 'name', this.value)"></td>
         <td class="p-1"><input type="text" value="${escAttr(p.quantitySpec || '')}" class="w-full border border-gray-200 rounded px-2 py-1 text-xs" onchange="updateProductField('${id}', 'quantitySpec', this.value)"></td>
         <td class="p-1"><input type="text" value="${escAttr(p.unitContent || '')}" class="w-full border border-gray-200 rounded px-2 py-1 text-xs" onchange="updateProductField('${id}', 'unitContent', this.value)"></td>
-        <td class="p-1"><input type="number" min="0" step="0.01" value="${p.costPrice ?? ''}" class="w-full border border-gray-200 rounded px-2 py-1 text-xs text-right font-mono" onchange="updateProductField('${id}', 'costPrice', this.value)"></td>
+        <td class="p-1"><input type="number" min="0" step="0.01" value="${p.costPrice ?? ''}" ${isQuotePending(p) ? 'placeholder="請填報價"' : ''} class="w-full border rounded px-2 py-1 text-xs text-right font-mono ${isQuotePending(p) ? QUOTE_PENDING_CLS : 'border-gray-200'}" onchange="updateProductField('${id}', 'costPrice', this.value); refreshQuotePending(this, '${id}')"></td>
         <td class="p-1"><input type="number" min="0" step="0.01" value="${p.retailPrice ?? ''}" class="w-full border border-gray-200 rounded px-2 py-1 text-xs text-right font-mono" onchange="updateProductField('${id}', 'retailPrice', this.value)"></td>
         <td class="p-1"><input type="text" value="${escAttr(p.storage || '')}" class="w-full border border-gray-200 rounded px-2 py-1 text-xs" onchange="updateProductField('${id}', 'storage', this.value)"></td>
         <td class="p-1"><input type="text" value="${escAttr(p.note || '')}" class="w-full border border-gray-200 rounded px-2 py-1 text-xs" onchange="updateProductField('${id}', 'note', this.value)"></td>
@@ -4225,6 +4262,178 @@ function updateProductField(id, field, value) {
         if (p._state === 'new') tr.classList.add('bg-green-50');
         else if (p._state === 'dirty') tr.classList.add('bg-yellow-50');
     }
+}
+
+// ===== 從「商品上架流程系統」已上架商品帶入 =====
+// 🔴 contact-products 是公開可讀。launch-products 的 source.cost 是廠商報給我們的進貨成本，
+//    絕對不可帶進任何欄位——下面 pickLaunchFields 用白名單只取四個欄位，其他一律不留在記憶體。
+//    本系統的 costPrice 是「給客戶的報價」，帶入時留空由報價的人自己填。
+const QUOTE_PENDING_CLS = 'border-yellow-400 bg-yellow-100';
+let launchImportItems = [];          // [{ id, name, spec, storage, retail, launchedAt }]
+let launchImportChecked = new Set(); // 勾起來的 launch-products doc id
+
+// 從上架帶入、還沒存檔、報價還空著 → 標黃提醒
+function isQuotePending(p) {
+    return p._state === 'new' && !!p.launchProductId && (p.costPrice === '' || p.costPrice == null);
+}
+
+function refreshQuotePending(input, id) {
+    const p = allProducts.find(x => x._id === id);
+    const pending = !!p && isQuotePending(p);
+    QUOTE_PENDING_CLS.split(' ').forEach(c => input.classList.toggle(c, pending));
+    input.classList.toggle('border-gray-200', !pending);
+}
+
+function pickLaunchFields(id, d) {
+    const src = d.source || {};
+    return {
+        id,
+        name: String(d.name || '').trim(),
+        spec: String(src.spec || '').trim(),
+        storage: String(src.storage || '').trim(),
+        retail: Number(src.retail) || '',
+        launchedAt: d.launchedAt || ''
+    };
+}
+
+// 這檔上架商品已經有哪幾種客戶類型的報價（含畫面上還沒存檔的新列）
+function launchQuotedTypes(launchId) {
+    const types = allProducts
+        .filter(p => !p._deleted && p.launchProductId === launchId && p.customerType)
+        .map(p => p.customerType);
+    return VALID_CUSTOMER_TYPES.filter(t => types.includes(t));
+}
+
+function fmtLaunchDate(iso) {
+    if (!iso) return '';
+    const d = new Date(iso);
+    if (isNaN(d)) return '';
+    return `${d.getFullYear()}/${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')}`;
+}
+
+async function openLaunchImportModal() {
+    launchImportItems = [];
+    launchImportChecked = new Set();
+    document.getElementById('launch-import-search').value = '';
+    document.getElementById('launch-import-types').innerHTML = VALID_CUSTOMER_TYPES.map(t =>
+        `<label class="inline-flex items-center gap-1.5 px-3 py-1.5 border border-gray-300 rounded-lg text-sm cursor-pointer hover:bg-gray-50">
+            <input type="checkbox" value="${escAttr(t)}" onchange="updateLaunchImportSummary()"> ${escHtml(t)}
+        </label>`).join('');
+    const list = document.getElementById('launch-import-list');
+    list.innerHTML = `<div class="text-sm text-gray-400 py-6 text-center">讀取已上架商品中...</div>`;
+    document.getElementById('launch-import-count').textContent = '';
+    updateLaunchImportSummary();
+    document.getElementById('modal-launch-import').classList.remove('hidden');
+
+    try {
+        const snap = await db.collection(LAUNCH_PRODUCTS_COL).where('status', '==', 'launched').get();
+        snap.forEach(d => launchImportItems.push(pickLaunchFields(d.id, d.data())));
+        launchImportItems.sort((a, b) => String(b.launchedAt).localeCompare(String(a.launchedAt)));
+        renderLaunchImportList();
+    } catch (err) {
+        console.error(err);
+        const denied = err && err.code === 'permission-denied';
+        list.innerHTML = `<div class="bg-red-50 border border-red-200 rounded-lg px-3 py-3 text-sm text-red-600">
+            ${denied
+                ? '讀不到已上架商品：你的帳號不在「商品上架流程系統」的白名單。<br><span class="text-xs">請小關到該系統的「👥 帳號管理」把你加進去後再試。</span>'
+                : '讀取失敗：' + escHtml(err.message || '')}
+        </div>`;
+    }
+}
+
+function closeLaunchImportModal() {
+    document.getElementById('modal-launch-import').classList.add('hidden');
+}
+
+function renderLaunchImportList() {
+    const list = document.getElementById('launch-import-list');
+    const q = (document.getElementById('launch-import-search').value || '').trim().toLowerCase();
+    let items = launchImportItems.map(x => ({ ...x, quoted: launchQuotedTypes(x.id) }));
+    if (q) items = items.filter(x => x.name.toLowerCase().includes(q) || x.spec.toLowerCase().includes(q));
+    // 還沒建報價的排前面，已建的排後面；各自維持上架時間新到舊
+    const fresh = items.filter(x => x.quoted.length === 0);
+    const done = items.filter(x => x.quoted.length > 0);
+    document.getElementById('launch-import-count').textContent = `共 ${items.length} 項`;
+
+    if (launchImportItems.length === 0) {
+        list.innerHTML = `<div class="text-sm text-gray-400 py-6 text-center">上架流程系統目前沒有已上架的商品</div>`;
+        return;
+    }
+    if (items.length === 0) {
+        list.innerHTML = `<div class="text-sm text-gray-400 py-6 text-center">找不到符合的商品</div>`;
+        return;
+    }
+    const rowHtml = x => {
+        const allDone = x.quoted.length === VALID_CUSTOMER_TYPES.length;
+        const meta = [
+            x.spec ? '📦 ' + escHtml(x.spec) : '',
+            x.storage ? '❄️ ' + escHtml(x.storage) : '',
+            x.retail ? '建議售價 $' + escHtml(formatPrice(x.retail)) : '',
+            x.launchedAt ? fmtLaunchDate(x.launchedAt) + ' 上架' : ''
+        ].filter(Boolean).join('　');
+        return `<label class="flex items-start gap-3 px-3 py-2.5 border border-gray-200 rounded-lg mb-2 ${allDone ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:border-brand hover:bg-brand/10'}">
+            <input type="checkbox" class="mt-1 flex-shrink-0" value="${escAttr(x.id)}" ${launchImportChecked.has(x.id) ? 'checked' : ''} ${allDone ? 'disabled' : ''}
+                onchange="toggleLaunchImportItem(this.value, this.checked)">
+            <span class="min-w-0 flex-1">
+                <span class="font-medium text-brand-dark break-all">${escHtml(x.name || '（未命名）')}</span>
+                ${meta ? `<span class="block text-[11px] text-gray-500 mt-0.5">${meta}</span>` : ''}
+                ${x.quoted.length ? `<span class="block text-[11px] text-green-700 mt-0.5">✓ 已建報價：${escHtml(x.quoted.join('、'))}${allDone ? '（五種都建了）' : '　可再補其他類型'}</span>` : ''}
+            </span>
+        </label>`;
+    };
+    list.innerHTML =
+        (fresh.length ? `<div class="text-xs text-gray-500 mb-1">尚未建報價（${fresh.length}）</div>${fresh.map(rowHtml).join('')}` : '') +
+        (done.length ? `<div class="text-xs text-gray-500 mb-1 ${fresh.length ? 'mt-3' : ''}">已建報價（${done.length}）</div>${done.map(rowHtml).join('')}` : '');
+}
+
+function toggleLaunchImportItem(id, checked) {
+    if (checked) launchImportChecked.add(id); else launchImportChecked.delete(id);
+    updateLaunchImportSummary();
+}
+
+function getLaunchImportTypes() {
+    return [...document.querySelectorAll('#launch-import-types input:checked')].map(el => el.value);
+}
+
+function updateLaunchImportSummary() {
+    const n = launchImportChecked.size, t = getLaunchImportTypes().length;
+    document.getElementById('launch-import-summary').textContent =
+        (n || t) ? `已勾 ${n} 項商品 × ${t} 種客戶類型` : '';
+}
+
+// 帶入：每個「商品 × 客戶類型」長一列新列（未存檔）；該類型已建過的自動略過
+function applyLaunchImport() {
+    const types = getLaunchImportTypes();
+    const picked = launchImportItems.filter(x => launchImportChecked.has(x.id));
+    if (picked.length === 0) { showToast('請先勾選要帶入的商品', 'error'); return; }
+    if (types.length === 0) { showToast('請先勾選客戶類型', 'error'); return; }
+
+    let added = 0, skipped = 0;
+    picked.forEach(x => {
+        const quoted = launchQuotedTypes(x.id);
+        types.forEach(t => {
+            if (quoted.includes(t)) { skipped++; return; }
+            allProducts.push({
+                _id: genTempId(), _state: 'new', _deleted: false,
+                launchProductId: x.id,
+                customerType: t,
+                code: '', name: x.name, quantitySpec: x.spec, unitContent: '',
+                costPrice: '',            // 給客戶的報價：留空標黃，由報價的人自己填
+                retailPrice: x.retail, storage: x.storage, note: ''
+            });
+            added++;
+        });
+    });
+    if (added === 0) { showToast('勾選的商品在這些客戶類型都已經建過報價了', 'error'); return; }
+
+    // 清掉篩選，不然新列可能被濾掉看不到
+    document.getElementById('product-filter-type').value = '';
+    document.getElementById('product-search').value = '';
+    closeLaunchImportModal();
+    renderProductTable();
+    const rows = document.querySelectorAll('#product-tbody tr');
+    if (rows.length) rows[rows.length - 1].scrollIntoView({ block: 'center', behavior: 'smooth' });
+    showToast(`已帶入 ${added} 列${skipped ? `（${skipped} 列已建過，略過）` : ''}，填好報價後按「儲存全部變更」`);
 }
 
 function addBlankProductRow() {
@@ -4295,7 +4504,10 @@ async function saveAllProducts() {
         showToast('有資料缺「客戶類型」或「產品名稱」，請補齊', 'error');
         return;
     }
-    if (!confirm('確認儲存全部變更嗎？')) return;
+    const pendingQuote = allProducts.filter(p => !p._deleted && isQuotePending(p)).length;
+    if (pendingQuote > 0) {
+        if (!confirm(`還有 ${pendingQuote} 筆從上架帶入的商品沒填報價（標黃那幾格），存下去客戶會看到報價是 0。\n\n確定照樣儲存嗎？`)) return;
+    } else if (!confirm('確認儲存全部變更嗎？')) return;
     try {
         const batch = db.batch();
         const now = firebase.firestore.FieldValue.serverTimestamp();
